@@ -317,7 +317,9 @@ describe("clear financial overview", () => {
 describe("shared Kuala Lumpur research for Malaysia-only trips", () => {
   it("seeds five matching Kuala Lumpur candidates without Singapore hotels or flight updates", () => {
     const t = makeTrip(true);
-    const candidates = t.hotels.filter((h) => h.id.includes(":hotel:"));
+    const candidates = t.hotels.filter(
+      (h) => h.id.includes(":hotel:") && h.checkIn === "2027-01-18",
+    );
     expect(candidates).toHaveLength(5);
     expect(
       candidates.every(

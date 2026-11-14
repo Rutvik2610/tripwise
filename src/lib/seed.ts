@@ -1,3 +1,4 @@
+import { addAirportHotel } from "./airportHotel";
 import { correctMalaysiaTrip } from "./malaysiaCorrection";
 import { applyMalaysiaPlan } from "./transit";
 import type { Store, Trip } from "./model";
@@ -229,7 +230,7 @@ export function makeTrip(malaysia = false): Trip {
       .map((c) => c.key),
   );
   return malaysia
-    ? correctMalaysiaTrip(applyMalaysiaPlan(researched))
+    ? addAirportHotel(correctMalaysiaTrip(applyMalaysiaPlan(researched)))
     : researched;
 }
 export function seed(): Store {

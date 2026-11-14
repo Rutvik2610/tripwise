@@ -1,3 +1,4 @@
+import { addAirportHotel } from "./airportHotel";
 import type { Expense, Hotel, Store, Transport, Trip } from "./model";
 import { blankExpense, blankTransport } from "./factories";
 import {
@@ -298,7 +299,7 @@ export function correctMalaysiaTrip(original: Trip): Trip {
   return { ...t, malaysiaPlanRevision: 2 };
 }
 export function correctMalaysiaStore(s: Store): Store {
-  const trips = s.trips.map(correctMalaysiaTrip);
+  const trips = s.trips.map((t) => addAirportHotel(correctMalaysiaTrip(t)));
   return trips.every((t, i) => t === s.trips[i]) ? s : { ...s, trips };
 }
 export function malaysiaCorrectionWarnings(t: Trip) {

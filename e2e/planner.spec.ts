@@ -548,7 +548,10 @@ test("Malaysia-only trip receives shared Kuala Lumpur quotes safely across fresh
       exact: true,
     }),
   ).toBeVisible();
-  await expect(page.locator(".hotel-card")).toHaveCount(6);
+  await expect(page.locator(".hotel-card")).toHaveCount(7);
+  await expect(
+    page.getByRole("heading", { name: "Tune Hotel KLIA-KLIA2", exact: true }),
+  ).toHaveCount(1);
   await page.evaluate(() => {
     const s = JSON.parse(localStorage.getItem("tripwise.v1")!);
     const t = s.trips.find((t: { id: string }) => t.id === s.activeId);
@@ -973,21 +976,13 @@ test("both scenarios use one Transportation Summary and Malaysia has separate fi
   await expect(
     page.getByRole("heading", { name: "Kuala Lumpur · 1 night", exact: true }),
   ).toBeVisible();
+  const airportHotel = page
+    .locator(".hotel-card")
+    .filter({ hasText: "Tune Hotel KLIA-KLIA2" });
+  await expect(airportHotel).toContainText("₹7,250");
   await expect(
-    page.getByRole("heading", {
-      name: "Selection pending for this stay",
-      exact: true,
-    }),
+    airportHotel.getByRole("button", { name: "Select stay", exact: true }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Add entry", exact: true }).click();
-  const modal = page.getByRole("dialog");
-  await expect(modal.getByLabel("Check-in", { exact: true })).toHaveValue(
-    "2027-01-27",
-  );
-  await expect(modal.getByLabel("Check-out", { exact: true })).toHaveValue(
-    "2027-01-28",
-  );
-  await modal.getByRole("button", { name: "Cancel", exact: true }).click();
   await navigate(page, "Itinerary");
   await expect(
     page.getByRole("heading", {
@@ -1159,4 +1154,67 @@ test("an existing saved Malaysia plan corrects automatically and retains an old 
       exact: true,
     }),
   ).toHaveCount(0);
+});
+
+test("Tune KLIA candidate is scoped to final Malaysia stay and selected costs persist", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page
+    .getByLabel("Active trip", { exact: true })
+    .selectOption({ label: "Malaysia only · Three islands & cities" });
+  await navigate(page, "Hotels");
+  await page.getByRole("button", { name: "Kuala Lumpur", exact: true }).click();
+  const card = page.locator(".hotel-card").filter({
+    has: page.getByRole("heading", {
+      name: "Tune Hotel KLIA-KLIA2",
+      exact: true,
+    }),
+  });
+  await expect(card).toHaveCount(1);
+  await expect(card).toContainText("₹7,250");
+  await expect(card).toContainText("Researching");
+  const before = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem("tripwise.v1")!),
+  );
+  const tripBefore = before.trips.find(
+    (t: { id: string }) => t.id === before.activeId,
+  );
+  await card.getByRole("button", { name: "Select stay", exact: true }).click();
+  await expect(card).toContainText("Selected stay");
+  await page.reload();
+  await navigate(page, "Hotels");
+  await page.getByRole("button", { name: "Kuala Lumpur", exact: true }).click();
+  await expect(card).toContainText("Selected stay");
+  const after = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem("tripwise.v1")!),
+  );
+  const tripAfter = after.trips.find(
+    (t: { id: string }) => t.id === after.activeId,
+  );
+  const hotel = tripAfter.hotels.find(
+    (h: { name: string }) => h.name === "Tune Hotel KLIA-KLIA2",
+  );
+  expect(hotel).toMatchObject({
+    selected: true,
+    nightly: 5302,
+    taxes: 1948,
+    paid: 0,
+    refunded: 0,
+    status: "Researching",
+  });
+  expect(
+    tripAfter.hotels.filter(
+      (h: { checkIn: string }) => h.checkIn === "2027-01-18",
+    ),
+  ).toEqual(
+    tripBefore.hotels.filter(
+      (h: { checkIn: string }) => h.checkIn === "2027-01-18",
+    ),
+  );
+  expect(after.trips[0]).toEqual(before.trips[0]);
+  await navigate(page, "Overview");
+  const stay = page.getByRole("row").filter({ hasText: "27 Jan – 28 Jan" });
+  await expect(stay).toContainText("Tune Hotel KLIA-KLIA2");
+  await expect(stay).toContainText("₹7,250");
 });
