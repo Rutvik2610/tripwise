@@ -197,12 +197,17 @@ export function ExpenseTableRows({
           <small>{e.destination}</small>
         </td>
         <td>
-          {e.amount.toLocaleString("en-IN")} {e.currency}
+          {e.costPending
+            ? "Price pending"
+            : `${e.amount.toLocaleString("en-IN")} ${e.currency}`}
           <small>
             ₹{e.rate} / {e.currency}
           </small>
         </td>
-        <td className="number">{money(expenseTotal(e))}</td>
+        <td className="number">
+          {e.costPending ? "Price pending" : money(expenseTotal(e))}
+          {e.includeInBudget === false && <small>Not included in budget</small>}
+        </td>
         <td>
           <Badge
             tone={

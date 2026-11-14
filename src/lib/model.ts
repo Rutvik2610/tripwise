@@ -25,6 +25,10 @@ export const bookingStatuses = [
 ];
 export const paymentStatuses = ["Unpaid", "Partially Paid", "Paid", "Refunded"];
 export interface Expense {
+  layoverId?: string;
+  sourceActivityId?: string;
+  includeInBudget?: boolean;
+  costPending?: boolean;
   id: string;
   description: string;
   destination: string;
@@ -105,6 +109,7 @@ export interface Transport {
   notes: string;
 }
 export interface Activity {
+  retiredTransit?: boolean;
   layoverId?: string;
   includeInBudget?: boolean;
   costPending?: boolean;
@@ -188,6 +193,7 @@ export interface Layover {
   notes: string;
 }
 export interface Trip {
+  malaysiaPlanRevision?: 2;
   fareGroups?: FareGroup[];
   layovers?: Layover[];
   id: string;

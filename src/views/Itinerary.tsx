@@ -1,3 +1,4 @@
+import { StaySummary } from "../components/CostOverview";
 import { TransitPlanning } from "../components/TransitPlanning";
 import { attachedLayoverLeg } from "../lib/transit";
 import { GripVertical, MapPin, Plus } from "lucide-react";
@@ -14,10 +15,11 @@ export default function Itinerary() {
     usePlanner();
   const visibleActivities = trip.activities.filter(
     (a) =>
-      !a.layoverId ||
-      trip.layovers?.some(
-        (l) => l.id === a.layoverId && !!attachedLayoverLeg(trip, l),
-      ),
+      !a.retiredTransit &&
+      (!a.layoverId ||
+        trip.layovers?.some(
+          (l) => l.id === a.layoverId && !!attachedLayoverLeg(trip, l),
+        )),
   );
   const duration = summary.days;
   const [itineraryView, setItineraryView] = useState("Timeline");
@@ -59,7 +61,31 @@ export default function Itinerary() {
   };
   return (
     <>
-      <TransitPlanning />
+      <section className="itinerary-intro">
+        <span className="eyebrow">
+          {dateLabel(trip.start)} – {dateLabel(trip.end)} · {summary.days} days
+          · {summary.nights} hotel nights
+        </span>
+        <h2>
+          {trip.departure} → {trip.stops.map((s) => s.name).join(" → ")} →{" "}
+          {trip.departure}
+        </h2>
+      </section>
+      <Panel title="The route" sub="Your destination dates are fully editable">
+        <div className="stop-editor">
+          {trip.stops.map((s) => (
+            <article key={s.id}>
+              <div>
+                <strong>{s.name}</strong>
+                <p>
+                  {s.country} · {shortDate(s.start)} – {shortDate(s.end)}
+                </p>
+              </div>
+              {editActions("stops", s)}
+            </article>
+          ))}
+        </div>
+      </Panel>
       <div className="page-actions">
         <div className="tabs">
           {["Timeline", "Calendar"].map((v) => (
@@ -83,21 +109,7 @@ export default function Itinerary() {
           </button>
         </div>
       </div>
-      <Panel title="The route" sub="Your destination dates are fully editable">
-        <div className="stop-editor">
-          {trip.stops.map((s) => (
-            <article key={s.id}>
-              <div>
-                <strong>{s.name}</strong>
-                <p>
-                  {s.country} · {shortDate(s.start)} – {shortDate(s.end)}
-                </p>
-              </div>
-              {editActions("stops", s)}
-            </article>
-          ))}
-        </div>
-      </Panel>
+
       <div className="notice">
         <GripVertical size={17} />
         <span>
@@ -129,7 +141,15 @@ export default function Itinerary() {
           itineraryView === "Calendar" ? "calendar-grid" : "timeline-days"
         }
       >
-        {[...new Set([...days, ...visibleActivities.map((a) => a.date)])]
+        {[
+          ...new Set([
+            ...days,
+            ...visibleActivities.map((a) => a.date),
+            ...(trip.layovers ?? [])
+              .filter((l) => !!attachedLayoverLeg(trip, l))
+              .map((l) => l.date),
+          ]),
+        ]
           .sort()
           .filter((d) => dayFilter === "All" || d === dayFilter)
           .map((d) => (
@@ -150,12 +170,41 @@ export default function Itinerary() {
                         (a) =>
                           a.date === d &&
                           a.status !== "Cancelled" &&
-                          a.includeInBudget !== false,
+                          a.includeInBudget !== false &&
+                          !a.retiredTransit,
                       )
                       .reduce((s, a) => s + a.cost, 0),
                   )}
                 </span>
               </header>
+              {trip.transport
+                .filter(
+                  (r) => r.status !== "Cancelled" && r.departureDate === d,
+                )
+                .map((r) => (
+                  <div className="itinerary-transfer" key={r.id}>
+                    <strong>
+                      Travel: {r.source} → {r.destination}
+                    </strong>
+                    <span>
+                      {r.departureTime
+                        ? `Departure ${r.departureTime} local time`
+                        : "Exact departure time unverified"}{" "}
+                      · {r.status}
+                      {r.fareGroupId ? " · Linked return ticket" : ""}
+                    </span>
+                  </div>
+                ))}
+              {(trip.layovers ?? [])
+                .filter((l) => l.date === d && !!attachedLayoverLeg(trip, l))
+                .map((l) => (
+                  <div className="itinerary-transfer" key={l.id}>
+                    <strong>Transit: Singapore Changi Airport</strong>
+                    <span>
+                      {l.arrivalTime}–{l.departureTime} · UTC+8 · {l.entry}
+                    </span>
+                  </div>
+                ))}
               {visibleActivities
                 .filter((a) => a.date === d)
                 .map((a) => (
@@ -242,6 +291,8 @@ export default function Itinerary() {
             </section>
           ))}
       </div>
+      <StaySummary />
+      <TransitPlanning view="itinerary" />
       <Panel
         title="Daily spending timeline"
         sub="All dated estimates, including bookings and activities"

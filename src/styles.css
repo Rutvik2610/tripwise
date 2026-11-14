@@ -4520,3 +4520,228 @@ input:disabled {
     font-size: 10px;
   }
 }
+.shared-transport-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  padding: 5px 23px 23px;
+}
+.shared-transport-summary > div {
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-right: 0;
+  background: var(--surface-soft);
+}
+.shared-transport-summary > div:first-child {
+  border-radius: 7px 0 0 7px;
+}
+.shared-transport-summary > div:last-child {
+  border-right: 1px solid var(--line);
+  border-radius: 0 7px 7px 0;
+}
+.shared-transport-summary span {
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.7;
+  display: block;
+}
+.shared-transport-summary strong {
+  font-size: 25px;
+  letter-spacing: -0.7px;
+  font-weight: 600;
+  display: block;
+  margin-top: 15px;
+}
+.shared-transport-summary > .summary-total {
+  background: var(--mint);
+}
+.summary-total strong {
+  color: var(--teal);
+}
+.correction-notes {
+  padding: 0 23px 20px;
+}
+.correction-notes p {
+  font-size: 11px;
+  line-height: 1.8;
+  color: var(--muted);
+  padding: 9px 13px;
+  background: var(--sand);
+  border-radius: 6px;
+  margin-bottom: 7px;
+}
+.operational-stats {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.compact-transit .transit-time-grid {
+  margin-bottom: 14px;
+}
+.compact-transit .transit-body > p {
+  margin-bottom: 10px;
+}
+.transit-entry-warning {
+  margin: 15px 0;
+  font-size: 11px;
+}
+.suggested-transit,
+.transit-confirmations {
+  padding: 13px 0;
+  border-top: 1px solid var(--line);
+}
+.suggested-transit > summary,
+.transit-confirmations > summary {
+  font-size: 11px;
+  line-height: 1.8;
+  font-weight: 550;
+}
+.suggested-transit p,
+.transit-confirmations p {
+  font-size: 10px;
+  color: var(--muted);
+  margin: 10px 0;
+}
+.suggested-transit ol {
+  list-style: none;
+  padding: 0;
+  margin: 14px 0;
+}
+.suggested-transit li {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 18px;
+  border-top: 1px solid var(--line);
+  padding: 15px 0;
+}
+.suggested-transit li > span {
+  font-size: 11px;
+  font-weight: 550;
+  color: var(--teal);
+  line-height: 1.8;
+}
+.suggested-transit h4 {
+  font-size: 12px;
+  line-height: 1.7;
+}
+.suggested-transit li p {
+  margin-bottom: 0;
+}
+.airside-fallback {
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 15px;
+  font-size: 12px !important;
+  color: var(--ink) !important;
+}
+.transit-expense-link {
+  border-top: 1px solid var(--line);
+  margin-top: 12px;
+  padding-top: 10px;
+}
+.transit-expense-link p {
+  font-size: 10px;
+  color: var(--muted);
+  margin: 8px 0;
+}
+.transit-expense-link .text-button {
+  margin-right: 18px;
+}
+.itinerary-intro {
+  padding: 2px 0 23px;
+}
+.itinerary-intro > .eyebrow {
+  font-size: 9px;
+  line-height: 1.8;
+}
+.itinerary-intro h2 {
+  font-size: 19px;
+  line-height: 1.9;
+  letter-spacing: -0.4px;
+}
+.itinerary-transfer {
+  margin: 15px 22px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--mint);
+  padding: 14px 16px;
+}
+.itinerary-transfer strong {
+  display: block;
+  font-size: 12px;
+  line-height: 1.9;
+  font-weight: 550;
+}
+.itinerary-transfer span {
+  display: block;
+  font-size: 10px;
+  line-height: 1.8;
+  color: var(--muted);
+  margin-top: 5px;
+}
+.calendar-grid .itinerary-transfer {
+  margin: 12px;
+  padding: 12px;
+}
+.calendar-grid .itinerary-transfer strong {
+  font-size: 10px;
+}
+@media (max-width: 1000px) {
+  .shared-transport-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .shared-transport-summary > div,
+  .shared-transport-summary > div:first-child,
+  .shared-transport-summary > div:last-child {
+    border: 1px solid var(--line);
+    border-radius: 7px;
+  }
+  .shared-transport-summary strong {
+    font-size: 25px;
+  }
+}
+@media (max-width: 520px) {
+  .shared-transport-summary {
+    padding: 4px 17px 20px;
+    gap: 10px;
+  }
+  .shared-transport-summary > div {
+    padding: 15px 12px;
+  }
+  .shared-transport-summary span {
+    font-size: 9px;
+    min-height: 31px;
+  }
+  .shared-transport-summary strong {
+    font-size: 24px;
+    margin-top: 12px;
+  }
+  .suggested-transit li {
+    grid-template-columns: 1fr;
+    gap: 6px;
+    padding: 17px 0;
+  }
+  .suggested-transit li > span {
+    font-size: 11px;
+  }
+  .suggested-transit h4 {
+    font-size: 12px;
+  }
+  .transit-entry-warning {
+    font-size: 10px;
+  }
+  .itinerary-intro h2 {
+    font-size: 17px;
+    line-height: 1.9;
+  }
+  .itinerary-intro > .eyebrow {
+    font-size: 8px;
+  }
+  .itinerary-transfer {
+    margin: 14px;
+    padding: 13px;
+  }
+  .itinerary-transfer strong {
+    font-size: 11px;
+  }
+}

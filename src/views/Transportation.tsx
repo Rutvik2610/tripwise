@@ -1,6 +1,6 @@
+import { TransportationSummary } from "../components/TransportationSummary";
 import { TransitPlanning } from "../components/TransitPlanning";
 import { transportationTotals } from "../lib/transit";
-import { convert } from "../lib/calc";
 import { ResearchUpdate } from "../components/ResearchUpdate";
 import {
   ArrowRight,
@@ -9,7 +9,6 @@ import {
   Info,
   Plane,
   Plus,
-  Wallet,
 } from "lucide-react";
 import { Bars } from "../components/Charts";
 import { Badge, Empty, Panel, Stat } from "../components/Shared";
@@ -29,43 +28,20 @@ export default function Transportation() {
     (t) => t.status !== "Cancelled",
   );
   const figures = transportationTotals(trip);
-  const transportCost = figures.total;
   const knownDurations = activeTransport
     .map(travelMinutes)
     .filter((n): n is number => n !== null && n >= 0);
-  const byMode = [...new Set(activeTransport.map((t) => t.mode))].map(
-    (mode) => ({
-      name: mode,
-      estimated: activeTransport
-        .filter((t) => t.mode === mode)
-        .reduce((s, t) => s + transportTotal(t), 0),
-    }),
-  );
-  for (const g of trip.fareGroups ?? []) {
-    if (g.status === "Cancelled") continue;
-    const found = byMode.find((r) => r.name === "International flight");
-    const value = convert(g.amount, g.rate);
-    if (found) found.estimated += value;
-    else byMode.push({ name: "International flight", estimated: value });
-  }
-  const remainingTransport =
-    transportCost - byMode.reduce((s, r) => s + r.estimated, 0);
-  if (remainingTransport > 0)
-    byMode.push({
-      name: "Other transport estimates",
-      estimated: remainingTransport,
-    });
+  const byMode = [
+    { name: "International airfare", estimated: figures.international },
+    { name: "Domestic / regional flights", estimated: figures.domestic },
+    { name: "Local / airport transport", estimated: figures.local },
+  ];
   return (
     <>
+      <TransportationSummary />
       <ResearchUpdate />
       <TransitPlanning />
-      <div className="stat-grid three">
-        <Stat
-          label="TRANSPORTATION ESTIMATE"
-          value={money(transportCost)}
-          detail="Ticket fares + domestic flights + local / airport transport"
-          icon={Wallet}
-        />
+      <div className="stat-grid operational-stats">
         <Stat
           label="FLIGHTS PLANNED"
           value={String(
@@ -198,7 +174,7 @@ export default function Transportation() {
           />
         )}
       </Panel>
-      <Panel title="Transportation by mode">
+      <Panel title="Transportation cost breakdown">
         <Bars format={money} data={byMode} />
       </Panel>
     </>

@@ -65,9 +65,16 @@ export default function Hotels() {
   const hotelOptions = trip.hotels.filter(
     (h) => h.destination === currentDestination,
   );
-  const hotelGroups = [...new Set(hotelOptions.map(stayKey))].filter(
-    (key) => !validFocus || key.toLowerCase() === validFocus,
-  );
+  const hotelGroups = [
+    ...new Set([
+      ...hotelOptions.map(stayKey),
+      ...trip.stops
+        .filter((s) => s.name === currentDestination)
+        .map((s) => `${s.name}|${s.start}|${s.end}`),
+    ]),
+  ]
+    .sort((a, b) => a.localeCompare(b))
+    .filter((key) => !validFocus || key.toLowerCase() === validFocus);
   const addHotel = () => {
     const parts = validFocus.split("|");
     const stop = trip.stops.find((s) => s.name === currentDestination);
@@ -126,6 +133,7 @@ export default function Hotels() {
         </button>
       </div>
       {hotelGroups.map((key) => {
+        const [, checkIn, checkOut] = key.split("|");
         const options = hotelOptions
           .filter((h) => stayKey(h) === key)
           .sort((a, b) => {
@@ -165,9 +173,26 @@ export default function Hotels() {
         return (
           <Panel
             key={key}
-            title={`${currentDestination} · ${daysBetween(options[0].checkIn, options[0].checkOut)} nights`}
-            sub={`${dateLabel(options[0].checkIn)} – ${dateLabel(options[0].checkOut)} · Only one selected hotel counts`}
+            title={`${currentDestination} · ${daysBetween(checkIn, checkOut)} ${daysBetween(checkIn, checkOut) === 1 ? "night" : "nights"}`}
+            sub={`${dateLabel(checkIn)} – ${dateLabel(checkOut)} · Only one selected hotel counts`}
           >
+            {!options.length && (
+              <Empty
+                label="Selection pending for this stay"
+                onAdd={() =>
+                  startEdit(
+                    "hotels",
+                    {
+                      ...blankHotel(),
+                      destination: currentDestination,
+                      checkIn,
+                      checkOut,
+                    },
+                    "Add hotel option",
+                  )
+                }
+              />
+            )}
             <div className="hotel-grid">
               {options.map((h) => {
                 const cost = hotelTotal(h);

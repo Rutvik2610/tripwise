@@ -607,15 +607,15 @@ test("Malaysia-only trip receives shared Kuala Lumpur quotes safely across fresh
   await fresh.close();
 });
 
-test("Malaysia return ticket counts once, optional transit costs stay independent, and copied trip references survive refresh", async ({
+test("Malaysia return ticket counts once in Transportation, transit costs use Expenses, and copied trip references survive refresh", async ({
   page,
 }) => {
   await page.goto("/");
   await page
     .getByLabel("Active trip", { exact: true })
     .selectOption({ label: "Malaysia only · Three islands & cities" });
-  await expect(page.getByTestId("return-ticket-total")).toHaveText("₹35,550");
-  await expect(page.getByTestId("flights-total")).toHaveText("₹41,550");
+  await expect(page.getByTestId("return-ticket-total")).toHaveCount(0);
+  await expect(page.getByTestId("flights-total")).toHaveText("₹44,847");
   const baseline = Number(
     (await page.getByTestId("total-trip-cost").innerText()).replace(
       /[^0-9]/g,
@@ -623,25 +623,41 @@ test("Malaysia return ticket counts once, optional transit costs stay independen
     ),
   );
   await expect(page.getByText("10h 35m", { exact: true })).toBeVisible();
+  await page.locator(".transit-confirmations>summary").click();
   await expect(
     page.getByText(
       "Not attached to a flight until both date and direction are confirmed.",
       { exact: true },
     ),
   ).toBeVisible();
-  await page.getByLabel("Optional layover cost", { exact: true }).fill("1500");
-  await expect(page.getByTestId("total-trip-cost")).toHaveText(
-    "₹" + baseline.toLocaleString("en-IN"),
-  );
   await page
-    .getByLabel("Include optional Singapore sightseeing", { exact: true })
-    .check();
+    .getByRole("button", { name: "Add planning expense", exact: true })
+    .click();
+  let modal = page.getByRole("dialog");
+  await modal
+    .getByLabel("Description", { exact: true })
+    .fill("Singapore MRT and lunch");
+  await modal.getByLabel("Original amount", { exact: true }).fill("1500");
+  await expect(
+    modal.getByLabel("Include this transit estimate in the budget", {
+      exact: true,
+    }),
+  ).toBeChecked();
+  await modal.getByRole("button", { name: "Save changes" }).click();
   await expect(page.getByTestId("total-trip-cost")).toHaveText(
     "₹" + (baseline + 1500).toLocaleString("en-IN"),
   );
-  await page
-    .getByLabel("Include optional Singapore sightseeing", { exact: true })
+  await navigate(page, "Expenses");
+  const row = page
+    .getByRole("row")
+    .filter({ hasText: "Singapore MRT and lunch" });
+  await row.getByRole("button", { name: "Edit record", exact: true }).click();
+  modal = page.getByRole("dialog");
+  await modal
+    .getByLabel("Include this transit estimate in the budget", { exact: true })
     .uncheck();
+  await modal.getByRole("button", { name: "Save changes" }).click();
+  await navigate(page, "Overview");
   await expect(page.getByTestId("total-trip-cost")).toHaveText(
     "₹" + baseline.toLocaleString("en-IN"),
   );
@@ -658,11 +674,11 @@ test("Malaysia return ticket counts once, optional transit costs stay independen
   await expect(page.locator(".ticket-legs")).toContainText(
     "Kuala Lumpur (KUL) → Mumbai (BOM)",
   );
-  await expect(page.locator(".transit-totals")).toContainText("₹46,550");
+  await expect(page.getByTestId("transport-total")).toHaveText("₹49,847");
   await page
     .getByRole("button", { name: "Edit ticket & payments", exact: true })
     .click();
-  const modal = page.getByRole("dialog");
+  modal = page.getByRole("dialog");
   await modal
     .getByLabel("Ticket name", { exact: true })
     .fill("My flexible return ticket");
@@ -702,11 +718,12 @@ test("Malaysia return ticket counts once, optional transit costs stay independen
     })
     .click();
   await page.reload();
-  await expect(page.getByTestId("return-ticket-total")).toHaveText("₹35,550");
   await expect(page.getByRole("alert")).toHaveCount(0);
+  await navigate(page, "Transportation");
+  await expect(page.getByTestId("return-ticket-total")).toHaveText("₹35,550");
 });
 
-test("transit remains provisional until date, direction, entry and all timing information is confirmed; mobile stays readable", async ({
+test("one conditional city schedule replaces the excursion panel; connection dates stay pending until explicitly entered", async ({
   page,
 }) => {
   await page.goto("/");
@@ -715,15 +732,39 @@ test("transit remains provisional until date, direction, entry and all timing in
     .selectOption({ label: "Malaysia only · Three islands & cities" });
   await navigate(page, "Itinerary");
   await expect(
-    page.getByText("Sightseeing window provisional.", { exact: false }),
-  ).toBeVisible();
-  await page
-    .getByRole("button", {
-      name: "Edit transit & time allowances",
+    page.getByRole("heading", {
+      name: "International round-trip ticket",
       exact: true,
-    })
+    }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", {
+      name: "Singapore Layover Sightseeing — 10h 35m Connection",
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByLabel("Singapore sightseeing option", { exact: true }),
+  ).toHaveCount(0);
+  const initial = await page.evaluate(
+    () => JSON.parse(localStorage.getItem("tripwise.v1")!).trips[1].layovers[0],
+  );
+  expect(initial.date).toBe("");
+  expect(initial.direction).toBe("Unknown");
+  await page.locator(".suggested-transit>summary").click();
+  await expect(page.locator(".suggested-transit")).toContainText(
+    "By approximately 15:30",
+  );
+  await expect(page.locator(".suggested-transit")).toContainText(
+    "Vegetarian lunch",
+  );
+  await expect(page.locator(".suggested-transit")).toContainText(
+    "eggs are acceptable",
+  );
+  await page
+    .getByRole("button", { name: "Edit transit details", exact: true })
     .click();
-  const modal = page.getByRole("dialog");
+  let modal = page.getByRole("dialog");
   await modal
     .getByLabel("Confirmed layover date", { exact: true })
     .fill("2027-01-28");
@@ -744,27 +785,18 @@ test("transit remains provisional until date, direction, entry and all timing in
     .selectOption("No");
   await modal.getByLabel("Arrival terminal", { exact: true }).fill("T1");
   await modal.getByLabel("Departure terminal", { exact: true }).fill("T2");
-  await modal
-    .getByLabel("Sightseeing option", { exact: true })
-    .selectOption("City");
-  for (const [label, value] of [
-    ["Disembarkation allowance (minutes)", "45"],
-    ["Immigration allowance (minutes)", "60"],
-    ["Airport to sightseeing travel (minutes)", "60"],
-    ["Return to airport travel (minutes)", "60"],
-    ["Departure security & formalities (minutes)", "45"],
-    ["Additional baggage/check-in time (minutes)", "0"],
-    ["Additional preflight safety buffer (minutes)", "120"],
-  ])
-    await modal.getByLabel(label, { exact: true }).fill(value);
+  await expect(
+    modal.getByLabel("Sightseeing option", { exact: true }),
+  ).toHaveCount(0);
   await modal.getByRole("button", { name: "Save changes" }).click();
-  await expect(page.locator(".usable-window")).toContainText(
-    "11:00–15:05 · 4h 5m",
-  );
+  await page.locator(".transit-confirmations>summary").click();
   await expect(
     page.getByText("Associated leg: Kuala Lumpur (KUL) → Mumbai (BOM)", {
       exact: true,
     }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Transit: Singapore Changi Airport", { exact: true }),
   ).toBeVisible();
   const data = await page.evaluate(() =>
     JSON.parse(localStorage.getItem("tripwise.v1")!),
@@ -780,12 +812,21 @@ test("transit remains provisional until date, direction, entry and all timing in
   ).toBe(false);
   expect(t.start).toBe("2027-01-18");
   expect(t.end).toBe("2027-01-28");
-  expect(
-    t.transport.find(
-      (r: { source: string; destination: string }) =>
-        r.source === "Kuala Lumpur (KUL)" && r.destination === "Mumbai (BOM)",
-    ).departureDate,
-  ).toBe("");
+  await page
+    .getByRole("button", { name: "Edit transit details", exact: true })
+    .click();
+  modal = page.getByRole("dialog");
+  await modal
+    .getByLabel("Entry permission verification", { exact: true })
+    .selectOption("Not permitted");
+  await modal.getByRole("button", { name: "Save changes" }).click();
+  await expect(
+    page.getByText(
+      "Remain airside at Changi Airport and use available transit-area facilities.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(page.locator(".suggested-transit")).toHaveCount(0);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.waitForTimeout(300);
   expect(
@@ -803,7 +844,12 @@ test("transit remains provisional until date, direction, entry and all timing in
     .getByRole("button", { name: "Open navigation", exact: true })
     .click();
   await navigate(page, "Itinerary");
-  await expect(page.locator(".usable-window")).toContainText("11:00–15:05");
+  await expect(
+    page.getByText(
+      "Remain airside at Changi Airport and use available transit-area facilities.",
+      { exact: true },
+    ),
+  ).toBeVisible();
 });
 
 test("legacy Malaysia flight update preserves a confirmed paid booking and offers transit details without forcing the quote", async ({
@@ -841,6 +887,7 @@ test("legacy Malaysia flight update preserves a confirmed paid booking and offer
   const before = await page.evaluate(
     () => JSON.parse(localStorage.getItem("tripwise.v1")!).trips,
   );
+  await navigate(page, "Transportation");
   await page
     .getByRole("button", { name: "Review Malaysia flight update", exact: true })
     .click();
@@ -873,4 +920,243 @@ test("legacy Malaysia flight update preserves a confirmed paid booking and offer
       exact: true,
     }),
   ).toBeVisible();
+});
+
+test("both scenarios use one Transportation Summary and Malaysia has separate final KL accommodation", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await navigate(page, "Transportation");
+  await expect(
+    page.getByRole("heading", { name: "Transportation Summary", exact: true }),
+  ).toHaveCount(1);
+  await expect(page.getByTestId("international-airfare")).toHaveText("₹44,634");
+  await expect(page.getByTestId("domestic-airfare")).toHaveText("₹3,567");
+  await expect(page.getByTestId("local-transport")).toHaveText("₹5,000");
+  await expect(page.getByTestId("transport-total")).toHaveText("₹53,201");
+  const combinedBefore = await page.evaluate(
+    () => JSON.parse(localStorage.getItem("tripwise.v1")!).trips[0],
+  );
+  await page
+    .getByLabel("Active trip", { exact: true })
+    .selectOption({ label: "Malaysia only · Three islands & cities" });
+  await expect(
+    page.getByRole("heading", { name: "Transportation Summary", exact: true }),
+  ).toHaveCount(1);
+  await expect(page.getByTestId("international-airfare")).toHaveText("₹35,550");
+  await expect(page.getByTestId("domestic-airfare")).toHaveText("₹9,297");
+  await expect(page.getByTestId("transport-total")).toHaveText("₹49,847");
+  await expect(
+    page
+      .locator(".transport-route")
+      .filter({ hasText: "Penang (PEN)" })
+      .filter({ hasText: "Mumbai (BOM)" }),
+  ).toHaveCount(0);
+  await expect(
+    page
+      .locator(".transport-route")
+      .filter({ hasText: "Penang (PEN)" })
+      .filter({ hasText: "Kuala Lumpur (KUL)" }),
+  ).toHaveCount(1);
+  await navigate(page, "Overview");
+  await expect(page.getByTestId("flights-total")).toHaveText("₹44,847");
+  await expect(
+    page.getByText("Partial — accommodation incomplete", { exact: true }),
+  ).toBeVisible();
+  const finalStay = page
+    .getByRole("row")
+    .filter({ hasText: "27 Jan – 28 Jan" });
+  await expect(finalStay).toContainText("Selection pending");
+  await finalStay
+    .getByRole("button", { name: "Compare alternatives", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Kuala Lumpur · 1 night", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: "Selection pending for this stay",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Add entry", exact: true }).click();
+  const modal = page.getByRole("dialog");
+  await expect(modal.getByLabel("Check-in", { exact: true })).toHaveValue(
+    "2027-01-27",
+  );
+  await expect(modal.getByLabel("Check-out", { exact: true })).toHaveValue(
+    "2027-01-28",
+  );
+  await modal.getByRole("button", { name: "Cancel", exact: true }).click();
+  await navigate(page, "Itinerary");
+  await expect(
+    page.getByRole("heading", {
+      name: "International round-trip ticket",
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Transportation Summary", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", {
+      name: "Singapore Layover Sightseeing — 10h 35m Connection",
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByText("Travel: Penang (PEN) → Kuala Lumpur (KUL)", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Travel: Kuala Lumpur (KUL) → Mumbai (BOM)", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForTimeout(300);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: "/tmp/tripwise-refined-itinerary-mobile.png",
+    fullPage: true,
+  });
+  await page
+    .getByRole("button", { name: "Open navigation", exact: true })
+    .click();
+  await navigate(page, "Transportation");
+  await expect(page.getByTestId("transport-total")).toHaveText("₹49,847");
+  await expect(page.locator(".shared-transport-summary")).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: "/tmp/tripwise-refined-transport-mobile.png",
+    fullPage: true,
+  });
+  expect(
+    await page.evaluate(
+      () => JSON.parse(localStorage.getItem("tripwise.v1")!).trips[0],
+    ),
+  ).toEqual(combinedBefore);
+});
+
+test("an existing saved Malaysia plan corrects automatically and retains an old excursion estimate in Expenses once", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page
+    .getByLabel("Active trip", { exact: true })
+    .selectOption({ label: "Malaysia only · Three islands & cities" });
+  const baseline = Number(
+    (await page.getByTestId("total-trip-cost").innerText()).replace(
+      /[^0-9]/g,
+      "",
+    ),
+  );
+  await page.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem("tripwise.v1")!);
+    const t = s.trips[1];
+    delete t.malaysiaPlanRevision;
+    t.stops = t.stops.filter(
+      (stop: { name: string; start: string }) =>
+        !(stop.name === "Kuala Lumpur" && stop.start === "2027-01-27"),
+    );
+    t.stops.find((stop: { name: string }) => stop.name === "Penang").end =
+      "2027-01-28";
+    t.hotels.find(
+      (h: { destination: string }) => h.destination === "Penang",
+    ).checkOut = "2027-01-28";
+    const kul = t.transport.find(
+      (r: { source: string; destination: string }) =>
+        r.source === "Kuala Lumpur (KUL)" && r.destination === "Langkawi (LGK)",
+    );
+    kul.fare = 3500;
+    t.transport.find(
+      (r: { source: string; destination: string }) =>
+        r.source === "Langkawi (LGK)" && r.destination === "Penang (PEN)",
+    ).fare = 2500;
+    t.transport = t.transport.filter(
+      (r: { source: string; destination: string }) =>
+        !(
+          r.source === "Penang (PEN)" && r.destination === "Kuala Lumpur (KUL)"
+        ),
+    );
+    t.transport.push({
+      ...kul,
+      id: "old-penang-mumbai",
+      source: "Penang (PEN)",
+      destination: "Mumbai (BOM)",
+      departureDate: "2027-01-28",
+      mode: "International flight",
+      fare: 12000,
+      status: "Researching",
+      notes: "Old provisional return estimate",
+    });
+    const a = t.activities.find((a: { layoverId?: string }) => a.layoverId);
+    delete a.retiredTransit;
+    a.cost = 1600;
+    a.costPending = false;
+    a.includeInBudget = true;
+    a.notes = "Preserve my custom vegetarian lunch and MRT notes";
+    t.expenses[0].paid = 400;
+    t.expenses[0].paymentStatus = "Partially Paid";
+    t.expenses[0].bookingStatus = "Booked";
+    localStorage.setItem("tripwise.v1", JSON.stringify(s));
+  });
+  const before = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem("tripwise.v1")!),
+  );
+  await page.reload();
+  await expect(page.getByTestId("flights-total")).toHaveText("₹44,847");
+  await expect(page.getByTestId("total-trip-cost")).toHaveText(
+    "₹" + (baseline + 1600).toLocaleString("en-IN"),
+  );
+  const after = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem("tripwise.v1")!),
+  );
+  expect(after.trips[0]).toEqual(before.trips[0]);
+  expect(after.trips[1].expenses[0]).toEqual(before.trips[1].expenses[0]);
+  expect(
+    after.trips[1].transport.some(
+      (r: { id: string }) => r.id === "old-penang-mumbai",
+    ),
+  ).toBe(false);
+  expect(after.trips[1].malaysiaPlanRevision).toBe(2);
+  expect(
+    after.trips[1].expenses.filter(
+      (e: { sourceActivityId?: string }) => e.sourceActivityId,
+    ),
+  ).toHaveLength(1);
+  expect(
+    after.trips[1].activities.find((a: { layoverId?: string }) => a.layoverId)
+      .notes,
+  ).toBe("Preserve my custom vegetarian lunch and MRT notes");
+  await navigate(page, "Expenses");
+  const row = page
+    .getByRole("row")
+    .filter({ hasText: "Singapore Layover Sightseeing — 10h 35m Connection" });
+  await expect(row).toContainText("₹1,600");
+  await row.locator("summary").click();
+  await expect(row).toContainText(
+    "Preserve my custom vegetarian lunch and MRT notes",
+  );
+  await page.reload();
+  const repeated = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem("tripwise.v1")!),
+  );
+  expect(repeated).toEqual(after);
+  await navigate(page, "Itinerary");
+  await expect(
+    page.getByRole("heading", {
+      name: "Singapore Layover Sightseeing — 10h 35m Connection",
+      exact: true,
+    }),
+  ).toHaveCount(0);
 });

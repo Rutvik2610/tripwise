@@ -68,7 +68,7 @@ export default function Expenses() {
       </div>
       <Panel
         title="Expense ledger"
-        sub={`${expenseRows.length} expenses · ${money(expenseRows.filter((e) => e.bookingStatus !== "Cancelled").reduce((s, e) => s + expenseTotal(e), 0))} planned`}
+        sub={`${expenseRows.length} expenses · ${money(expenseRows.filter((e) => e.bookingStatus !== "Cancelled" && e.includeInBudget !== false).reduce((s, e) => s + expenseTotal(e), 0))} planned`}
         action={
           <button className="button" onClick={() => add("expenses")}>
             <Plus size={16} />

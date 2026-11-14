@@ -339,7 +339,7 @@ describe("shared Kuala Lumpur research for Malaysia-only trips", () => {
           (r) => r.mode === "Domestic flight" || r.mode === "Regional flight",
         )
         .map(transportTotal),
-    ).toEqual([3500, 2500]);
+    ).toEqual([3567, 3251, 2479]);
     expect(t.fareGroups?.[0].amount).toBe(35550);
   });
   it("adds shared candidates to older saved trips once and preserves their selections, financial history and other records", () => {

@@ -1,8 +1,10 @@
+import { blankExpense } from "../lib/factories";
+import { singaporeSuggestedSchedule } from "../lib/singaporeSchedule";
 import { useState } from "react";
 import { Plane, Info, ExternalLink } from "lucide-react";
 import { usePlanner } from "../lib/context";
 import { Editor } from "./Editor";
-import { Panel, Badge } from "./Shared";
+import { Panel } from "./Shared";
 import { convert, paymentState, netPaid } from "../lib/calc";
 import { schemas, validate } from "../lib/storage";
 import type { FareGroup, Layover } from "../lib/model";
@@ -14,9 +16,6 @@ import {
   roundTripTicket,
   layoverMinutes,
   attachedLayoverLeg,
-  sightseeingWindow,
-  clockLabel,
-  transportationTotals,
 } from "../lib/transit";
 export function MalaysiaPlanUpdate() {
   const { trip, updateTrip, money, editActions } = usePlanner();
@@ -44,9 +43,9 @@ export function MalaysiaPlanUpdate() {
           </p>
           {r.oldReturn && (
             <p>
-              The old Penang → Mumbai planning record will be retained as a
-              superseded estimate. Plan Penang → Kuala Lumpur separately; no
-              connecting fare or schedule is assumed.
+              Obsolete unpaid Penang → Mumbai estimates are removed by the
+              Malaysia itinerary correction. Actual booking and payment history
+              remains protected.
             </p>
           )}
           {r.protectedRecords.length > 0 && (
@@ -103,9 +102,12 @@ export function MalaysiaPlanUpdate() {
     </Panel>
   );
 }
-export function TransitPlanning({ compact = false }: { compact?: boolean }) {
-  const { trip, store, setStore, money, updateTrip, startEdit, editActions } =
-    usePlanner();
+export function TransitPlanning({
+  view = "transportation",
+}: {
+  view?: "transportation" | "itinerary" | "overview";
+}) {
+  const { trip, store, setStore, money, startEdit, go } = usePlanner();
   const [editing, setEditing] = useState<{
     kind: "fareGroups" | "layovers";
     value: FareGroup | Layover;
@@ -123,7 +125,7 @@ export function TransitPlanning({ compact = false }: { compact?: boolean }) {
     if (editing.kind === "layovers") {
       const l = parsed as Layover;
       nextTrip.activities = nextTrip.activities.map((a) =>
-        a.layoverId === l.id
+        a.layoverId === l.id && !a.retiredTransit
           ? { ...a, date: attachedLayoverLeg(nextTrip, l) ? l.date : "" }
           : a,
       );
@@ -136,14 +138,13 @@ export function TransitPlanning({ compact = false }: { compact?: boolean }) {
     setStore(next);
     setEditing(null);
   };
-  const figures = transportationTotals(trip);
   return (
     <>
-      <MalaysiaPlanUpdate />
-      {ticket && (
+      {view === "transportation" && <MalaysiaPlanUpdate />}
+      {view === "transportation" && ticket && (
         <Panel
           title="International round-trip ticket"
-          sub="One combined fare covers both directions. Individual-leg prices are unknown."
+          sub="One combined fare covers both directions; individual-leg prices are unknown."
           action={
             <button
               className="text-button"
@@ -172,9 +173,9 @@ export function TransitPlanning({ compact = false }: { compact?: boolean }) {
               </strong>
             </div>
             <p>
-              Counted once, not per flight.{" "}
+              Fare counted once, not per direction.{" "}
               {money(netPaid(ticket.paid, ticket.refunded))} net paid. Airline,
-              baggage allowance, fare conditions and connection protection
+              allowance, fare conditions and connection protection remain
               unverified.
             </p>
             <div className="ticket-legs">
@@ -194,286 +195,190 @@ export function TransitPlanning({ compact = false }: { compact?: boolean }) {
                   </div>
                 ))}
             </div>
-            <div className="transit-totals">
-              <span>
-                International airfare{" "}
-                <strong>{money(figures.international)}</strong>
-              </span>
-              <span>
-                Domestic flights <strong>{money(figures.domestic)}</strong>
-              </span>
-              <span>
-                Local / airport transport{" "}
-                <strong>{money(figures.local)}</strong>
-              </span>
-              <span>
-                Total transportation <strong>{money(figures.total)}</strong>
-              </span>
-            </div>
-            <p className="transit-warning">
-              Penang → Kuala Lumpur repositioning still needs confirmation and a
-              price. This missing connection is not silently included in the
-              quote.
-            </p>
           </div>
         </Panel>
       )}
       {(trip.layovers ?? []).map((l) => {
-        const mins = layoverMinutes(l),
-          window = sightseeingWindow(l),
+        const duration = layoverMinutes(l),
           leg = attachedLayoverLeg(trip, l),
-          activity = trip.activities.find((a) => a.layoverId === l.id);
+          retained = trip.expenses.filter((e) => e.layoverId === l.id);
         return (
           <Panel
             key={l.id}
             title="Singapore Changi Airport — Transit Stop"
-            sub="Provisional connection · not an overnight destination"
+            sub="Transit / sightseeing only · no overnight stay"
             action={
               <button
                 className="text-button"
                 onClick={() => setEditing({ kind: "layovers", value: l })}
               >
-                Edit transit & time allowances
+                Edit transit details
               </button>
             }
           >
-            <div className="transit-body">
+            <div className="transit-body compact-transit">
               <div className="transit-time-grid">
                 <div>
-                  <small>ARRIVAL · SINGAPORE LOCAL</small>
+                  <small>ARRIVAL · UTC+8</small>
                   <strong>{l.arrivalTime || "Pending"}</strong>
                 </div>
                 <div>
-                  <small>DEPARTURE · SINGAPORE LOCAL</small>
+                  <small>DEPARTURE · UTC+8</small>
                   <strong>{l.departureTime || "Pending"}</strong>
                 </div>
                 <div>
-                  <small>CONNECTION · UTC+8</small>
+                  <small>LAYOVER · SINGAPORE LOCAL</small>
                   <strong>
-                    {mins === null
+                    {duration === null
                       ? "Pending"
-                      : `${Math.floor(mins / 60)}h ${mins % 60}m`}
+                      : `${Math.floor(duration / 60)}h ${duration % 60}m`}
                   </strong>
                 </div>
               </div>
-              <div className="transit-facts">
-                <p>
-                  Date: {l.date ? shortDate(l.date) : "Confirmation pending"} ·
-                  Direction:{" "}
-                  {l.direction === "Unknown"
-                    ? "Confirmation pending"
-                    : l.direction}
+              <p>
+                <strong>Entry status:</strong> {l.entry} ·{" "}
+                <strong>Sightseeing plan:</strong> Marina Bay / Merlion Park
+                (suggested)
+              </p>
+              <p>
+                Date: {l.date ? shortDate(l.date) : "Confirmation pending"} ·
+                Direction:{" "}
+                {l.direction === "Unknown"
+                  ? "Confirmation pending"
+                  : l.direction}
+              </p>
+              <div className="notice warning transit-entry-warning">
+                <Info size={17} />
+                <span>
+                  Leaving transit requires valid Singapore entry permission;
+                  Indian citizenship or a long layover does not establish
+                  visa/VFTF eligibility. Plan to return around 15:30, verify
+                  airline requirements and actual timings, and allow extra time
+                  when needed. Jewel is landside and is not an airside fallback.
+                  {l.arrivalTime !== "08:15" || l.departureTime !== "18:50"
+                    ? " Connection times have changed; reassess the suggested schedule below."
+                    : ""}
+                </span>
+              </div>
+              {l.entry === "Not permitted" ? (
+                <p className="airside-fallback">
+                  <strong>
+                    Remain airside at Changi Airport and use available
+                    transit-area facilities.
+                  </strong>
                 </p>
-                <p>
-                  Entry: {l.entry} · Baggage checked through: {l.baggage} ·
-                  Protected connection: {l.protectedConnection}
-                </p>
-                <p>
-                  Terminals: {l.arrivalTerminal || "Unknown"} →{" "}
-                  {l.departureTerminal || "Unknown"} · Additional check-in:{" "}
-                  {l.additionalCheckIn}
-                </p>
+              ) : (
+                <details className="suggested-transit">
+                  <summary>
+                    Suggested schedule — conditional on entry permission and
+                    actual flight timings
+                  </summary>
+                  <p>
+                    Planning allowances for an 08:15–18:50 connection. No entry
+                    permission, flight date, journey direction, reservation, or
+                    travel duration is guaranteed.
+                  </p>
+                  <ol>
+                    {singaporeSuggestedSchedule.map((row) => (
+                      <li key={row.time}>
+                        <span>{row.time}</span>
+                        <div>
+                          <h4>{row.title}</h4>
+                          <p>{row.detail}</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                  <p>
+                    <strong>If entry is not permitted:</strong> Remain airside
+                    at Changi Airport and use available transit-area facilities.
+                  </p>
+                </details>
+              )}
+              <details className="transit-confirmations">
+                <summary>Connection details & official guidance</summary>
                 <p>
                   {leg
                     ? `Associated leg: ${leg.source} → ${leg.destination}`
                     : "Not attached to a flight until both date and direction are confirmed."}
                 </p>
-              </div>
-              <div className="notice warning">
-                <Info size={18} />
-                <span>
-                  The full layover is not sightseeing time. Leaving transit
-                  requires verified entry permission. Indian citizenship and a
-                  long connection do not establish Singapore visa or VFTF
-                  eligibility. Jewel’s public areas are landside, so airport
-                  sightseeing can also require entry permission.
-                </span>
-              </div>
-              {activity ? (
-                <section className="optional-excursion">
-                  <header>
-                    <h3>{activity.name}</h3>
-                    <Badge>
-                      {activity.includeInBudget
-                        ? "Optional · included in plan"
-                        : "Optional · not included"}
-                    </Badge>
-                  </header>
-                  <label className="inline-check">
-                    <input
-                      type="checkbox"
-                      aria-label="Include optional Singapore sightseeing"
-                      checked={activity.includeInBudget === true}
-                      onChange={(e) =>
-                        updateTrip((t) => ({
-                          ...t,
-                          activities: t.activities.map((a) =>
-                            a.id === activity.id
-                              ? { ...a, includeInBudget: e.target.checked }
-                              : a,
-                          ),
-                        }))
-                      }
-                    />
-                    Include optional excursion in this trip
-                  </label>
-                  <div className="transit-options">
-                    <label>
-                      <span>Sightseeing approach</span>
-                      <select
-                        aria-label="Singapore sightseeing option"
-                        value={l.option}
-                        onChange={(e) =>
-                          updateTrip((t) => ({
-                            ...t,
-                            layovers: t.layovers?.map((x) =>
-                              x.id === l.id
-                                ? {
-                                    ...x,
-                                    option: e.target.value as Layover["option"],
-                                  }
-                                : x,
-                            ),
-                          }))
-                        }
-                      >
-                        <option value="Undecided">Choose after research</option>
-                        <option value="Airport">
-                          Option A — Stay near airport / Jewel
-                        </option>
-                        <option value="City">
-                          Option B — Central Singapore
-                        </option>
-                      </select>
-                    </label>
-                    <label>
-                      <span>Optional excursion estimate (INR)</span>
-                      <input
-                        type="number"
-                        min="0"
-                        max="10000000"
-                        aria-label="Optional layover cost"
-                        placeholder="Estimate pending"
-                        value={activity.costPending ? "" : activity.cost}
-                        onChange={(e) =>
-                          updateTrip((t) => ({
-                            ...t,
-                            activities: t.activities.map((a) =>
-                              a.id === activity.id
-                                ? {
-                                    ...a,
-                                    costPending: e.target.value === "",
-                                    cost: Math.min(
-                                      1e7,
-                                      Math.max(0, Number(e.target.value)),
-                                    ),
-                                  }
-                                : a,
-                            ),
-                          }))
-                        }
-                      />
-                    </label>
-                  </div>
-                  <p>
-                    {l.option === "City"
-                      ? "Candidates: Marina Bay waterfront, Merlion Park, Gardens by the Bay outdoor areas. Choose only what fits after entry and timing are verified."
-                      : l.option === "Airport"
-                        ? "Candidate: Jewel Changi and nearby facilities. Verify entry/access requirements before leaving transit."
-                        : "Sightseeing candidates only; no attraction has been automatically scheduled or booked."}
-                  </p>
-                  <p>
-                    Estimated excursion:{" "}
-                    {activity.costPending
-                      ? "Price pending — no amount invented"
-                      : money(activity.cost)}
-                    .{" "}
-                    {activity.includeInBudget
-                      ? "Included once in the trip forecast."
-                      : "Excluded from the trip forecast."}{" "}
-                    Add MRT, food or tickets either here as one combined
-                    estimate or as separate Expenses, not both.
-                  </p>
-                  {window ? (
-                    <div className="usable-window">
-                      <strong>
-                        {window.minutes
-                          ? `${clockLabel(window.start)}–${clockLabel(window.end)} · ${Math.floor(window.minutes / 60)}h ${window.minutes % 60}m estimated usable time`
-                          : "No usable sightseeing time with these allowances"}
-                      </strong>
-                      <p>
-                        Based on your manual allowances, not a confirmed
-                        schedule or guarantee.{" "}
-                        {window.conservativeBuffer
-                          ? "Includes at least two hours of additional safety buffer."
-                          : "Safety buffer is under the conservative two-hour planning safeguard; reassess using airline guidance."}
-                      </p>
-                    </div>
-                  ) : (
-                    <p className="transit-warning">
-                      Sightseeing window provisional. Confirm date, direction,
-                      entry, baggage, protection, check-in, terminals, option
-                      and every time allowance before calculating usable time.
-                    </p>
-                  )}
-                  {!compact && (
-                    <div className="button-group">
-                      <button
-                        className="button secondary"
-                        onClick={() =>
-                          startEdit(
-                            "activities",
-                            activity,
-                            "Edit optional layover excursion",
-                          )
-                        }
-                      >
-                        Edit excursion notes & costs
-                      </button>
-                      {editActions("activities", activity)}
-                    </div>
-                  )}
-                </section>
-              ) : (
                 <p>
-                  Optional excursion removed. The transit connection remains
-                  recorded.
+                  Baggage checked through: {l.baggage} · Protected connection:{" "}
+                  {l.protectedConnection} · Extra check-in:{" "}
+                  {l.additionalCheckIn}
                 </p>
-              )}
-              <div className="transit-sources">
-                <a
-                  href="https://www.ica.gov.sg/enter-transit-depart"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  ICA: official entry, visa & transit guidance{" "}
-                  <ExternalLink size={12} />
-                </a>
-                <a
-                  href="https://www.ica.gov.sg/enter-transit-depart/entering-singapore/sg-arrival-card"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  ICA: SG Arrival Card guidance <ExternalLink size={12} />
-                </a>
-                <a
-                  href="https://www.changiairport.com/"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Changi Airport guidance <ExternalLink size={12} />
-                </a>
-                {safeUrl(l.airlineUrl) && (
+                <p>
+                  Terminals: {l.arrivalTerminal || "Unknown"} →{" "}
+                  {l.departureTerminal || "Unknown"}
+                </p>
+                <div className="transit-sources">
                   <a
-                    href={safeUrl(l.airlineUrl)!}
+                    href="https://www.ica.gov.sg/enter-transit-depart"
                     target="_blank"
                     rel="noreferrer"
                   >
-                    Your airline’s official guidance <ExternalLink size={12} />
+                    ICA: entry, visa & transit guidance{" "}
+                    <ExternalLink size={12} />
                   </a>
-                )}
+                  <a
+                    href="https://www.ica.gov.sg/enter-transit-depart/entering-singapore/sg-arrival-card"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    ICA: SG Arrival Card <ExternalLink size={12} />
+                  </a>
+                  <a
+                    href="https://www.changiairport.com/"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Changi Airport guidance <ExternalLink size={12} />
+                  </a>
+                  {safeUrl(l.airlineUrl) && (
+                    <a
+                      href={safeUrl(l.airlineUrl)!}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Your airline’s official guidance{" "}
+                      <ExternalLink size={12} />
+                    </a>
+                  )}
+                </div>
+                <p>{l.notes}</p>
+              </details>
+              <div className="transit-expense-link">
+                <p>
+                  Plan MRT, taxi, meal or attraction costs in Expenses. No
+                  prices are assumed.
+                  {retained.length
+                    ? ` ${retained.length} existing transit cost record(s) retained there.`
+                    : ""}
+                </p>
+                <button className="text-button" onClick={() => go("Expenses")}>
+                  View transit costs in Expenses
+                </button>
+                <button
+                  className="text-button"
+                  onClick={() =>
+                    startEdit(
+                      "expenses",
+                      {
+                        ...blankExpense(),
+                        destination: "Singapore (transit only)",
+                        date: l.date,
+                        description: "Singapore transit — ",
+                        category: "Local transportation",
+                        layoverId: l.id,
+                        includeInBudget: true,
+                      },
+                      "Add transit expense",
+                    )
+                  }
+                >
+                  Add planning expense
+                </button>
               </div>
-              <p>{l.notes}</p>
             </div>
           </Panel>
         );
@@ -484,7 +389,7 @@ export function TransitPlanning({ compact = false }: { compact?: boolean }) {
           title={
             editing.kind === "fareGroups"
               ? "Edit shared round-trip ticket"
-              : "Edit provisional Singapore transit"
+              : "Edit Singapore transit details"
           }
           kind={editing.kind}
           initial={editing.value}

@@ -1,3 +1,4 @@
+import { correctMalaysiaStore } from "./lib/malaysiaCorrection";
 import type { LucideIcon } from "lucide-react";
 import {
   ArrowRight,
@@ -342,7 +343,9 @@ export default function App() {
   const importData = async (file: File) => {
     try {
       if (file.size > 10_000_000) throw Error("Backup exceeds 10 MB.");
-      const data = validate(JSON.parse(await file.text()));
+      const data = validate(
+        correctMalaysiaStore(validate(JSON.parse(await file.text()))),
+      );
       if (
         !confirm(
           "Replace all trips and settings with this backup? Export your current data first if needed.",

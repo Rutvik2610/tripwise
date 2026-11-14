@@ -91,37 +91,6 @@ export const fields: Record<string, Field[]> = {
       "Yes",
       "No",
     ]),
-    select("option", "Sightseeing option", ["Undecided", "Airport", "City"]),
-    ...(
-      [
-        "disembarkation",
-        "immigration",
-        "travelOut",
-        "travelBack",
-        "formalities",
-        "baggageCheckIn",
-        "safetyBuffer",
-      ] as const
-    ).map((key, i) =>
-      f(
-        key,
-        [
-          "Disembarkation allowance (minutes)",
-          "Immigration allowance (minutes)",
-          "Airport to sightseeing travel (minutes)",
-          "Return to airport travel (minutes)",
-          "Departure security & formalities (minutes)",
-          "Additional baggage/check-in time (minutes)",
-          "Additional preflight safety buffer (minutes)",
-        ][i],
-        "number",
-        {
-          nullable: true,
-          max: 1440,
-          hint: "Leave blank until researched. These are manual planning assumptions, not guaranteed processing times.",
-        },
-      ),
-    ),
     f("airlineUrl", "Official airline guidance URL", "url"),
     f("notes", "Transit notes", "textarea"),
   ],
@@ -156,6 +125,15 @@ export const fields: Record<string, Field[]> = {
     ...money,
     f("amount", "Original amount", "number"),
     ...payments,
+    f(
+      "includeInBudget",
+      "Include this transit estimate in the budget",
+      "checkbox",
+      { layoverOnly: true },
+    ),
+    f("costPending", "Price estimate pending", "checkbox", {
+      layoverOnly: true,
+    }),
     select("bookingStatus", "Booking status", bookingStatuses),
     f("refundable", "Refundable", "checkbox"),
     f("vendor", "Vendor / provider"),
@@ -469,7 +447,8 @@ export function Editor({
                           onChange={(e) =>
                             setValue({
                               ...value,
-                              ...(field.key === "cost" && value.layoverId
+                              ...(["cost", "amount"].includes(field.key) &&
+                              value.layoverId
                                 ? { costPending: false }
                                 : {}),
                               [field.key]:

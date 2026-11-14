@@ -51,6 +51,12 @@ export default function Trips() {
       if (l.fareGroupId)
         l.fareGroupId = idMap.get(l.fareGroupId) ?? l.fareGroupId;
     });
+    copied.expenses.forEach((e) => {
+      if (e.layoverId) e.layoverId = idMap.get(e.layoverId) ?? e.layoverId;
+      if (e.sourceActivityId)
+        e.sourceActivityId =
+          idMap.get(e.sourceActivityId) ?? e.sourceActivityId;
+    });
     copied.activities.forEach((a) => {
       if (a.layoverId) a.layoverId = idMap.get(a.layoverId) ?? a.layoverId;
     });

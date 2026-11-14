@@ -1,3 +1,4 @@
+import { correctMalaysiaStore } from "./malaysiaCorrection";
 import { z } from "zod";
 import type { Store } from "./model";
 import {
@@ -13,6 +14,10 @@ const str = z.string().max(10000),
 const currency = z.enum(currencies),
   status = z.enum(bookingStatuses as [string, ...string[]]);
 const expense = z.object({
+  layoverId: id.optional(),
+  sourceActivityId: id.optional(),
+  includeInBudget: z.boolean().optional(),
+  costPending: z.boolean().optional(),
   id,
   description: str.min(1),
   destination: str,
@@ -107,6 +112,7 @@ const transport = z.object({
   notes: str,
 });
 const activity = z.object({
+  retiredTransit: z.boolean().optional(),
   layoverId: id.optional(),
   includeInBudget: z.boolean().optional(),
   costPending: z.boolean().optional(),
@@ -193,6 +199,7 @@ const layover = z.object({
   notes: str,
 });
 const trip = z.object({
+  malaysiaPlanRevision: z.literal(2).optional(),
   fareGroups: z.array(fareGroup).max(1000).optional(),
   layovers: z.array(layover).max(1000).optional(),
   id,
@@ -335,7 +342,12 @@ export const storageKey = "tripwise.v1";
 export function load(): { data: Store | null; error: string } {
   try {
     const raw = localStorage.getItem(storageKey);
-    return { data: raw ? validate(JSON.parse(raw)) : null, error: "" };
+    return {
+      data: raw
+        ? validate(correctMalaysiaStore(validate(JSON.parse(raw))))
+        : null,
+      error: "",
+    };
   } catch {
     return {
       data: null,

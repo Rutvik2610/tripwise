@@ -1,3 +1,4 @@
+import { correctMalaysiaTrip } from "./malaysiaCorrection";
 import { applyMalaysiaPlan } from "./transit";
 import type { Store, Trip } from "./model";
 import { uid } from "./model";
@@ -227,7 +228,9 @@ export function makeTrip(malaysia = false): Trip {
       .filter((c) => c.state === "ready")
       .map((c) => c.key),
   );
-  return malaysia ? applyMalaysiaPlan(researched) : researched;
+  return malaysia
+    ? correctMalaysiaTrip(applyMalaysiaPlan(researched))
+    : researched;
 }
 export function seed(): Store {
   const trips = [makeTrip(), makeTrip(true)];

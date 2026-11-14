@@ -26,7 +26,7 @@ export default function Dashboard() {
   return (
     <>
       <CostOverview />
-      <TransitPlanning compact />
+      <TransitPlanning view="overview" />
       <ResearchUpdate />
       <Panel
         title="Where your money goes"

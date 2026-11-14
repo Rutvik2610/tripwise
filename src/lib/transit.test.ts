@@ -1,3 +1,5 @@
+import { blankTransport } from "./factories";
+import { correctMalaysiaStore } from "./malaysiaCorrection";
 import { describe, it, expect } from "vitest";
 import { makeTrip, seed } from "./seed";
 import {
@@ -15,19 +17,46 @@ import { validate, storageKey, load } from "./storage";
 import type { Trip } from "./model";
 function legacyMalaysia(): Trip {
   const t = makeTrip(true);
-  const first = t.transport.find((r) => r.source === "Mumbai (BOM)")!;
-  delete first.fareGroupId;
-  first.fare = 12500;
-  first.notes =
-    "Provisional fare; schedule and connection protection unverified.";
-  t.transport = t.transport.filter(
-    (r) =>
-      r.source !== "Kuala Lumpur (KUL)" || r.destination !== "Mumbai (BOM)",
-  );
-  const old = t.transport.find((r) => r.source === "Penang (PEN)")!;
-  old.status = "Researching";
-  old.notes =
-    "Provisional fare; schedule and connection protection unverified.";
+  t.transport = [
+    {
+      ...blankTransport(),
+      id: "legacy-bom-kul",
+      source: "Mumbai (BOM)",
+      destination: "Kuala Lumpur (KUL)",
+      departureDate: "2027-01-18",
+      fare: 12500,
+    },
+    {
+      ...blankTransport(),
+      id: "legacy-kul-lgk",
+      source: "Kuala Lumpur (KUL)",
+      destination: "Langkawi (LGK)",
+      departureDate: "2027-01-21",
+      mode: "Domestic flight",
+      fare: 3500,
+    },
+    {
+      ...blankTransport(),
+      id: "legacy-lgk-pen",
+      source: "Langkawi (LGK)",
+      destination: "Penang (PEN)",
+      departureDate: "2027-01-24",
+      mode: "Regional flight",
+      fare: 2500,
+    },
+    {
+      ...blankTransport(),
+      id: "legacy-pen-bom",
+      source: "Penang (PEN)",
+      destination: "Mumbai (BOM)",
+      departureDate: "2027-01-28",
+      fare: 12000,
+    },
+  ];
+  delete t.malaysiaPlanRevision;
+  t.stops = t.stops
+    .filter((s) => !(s.name === "Kuala Lumpur" && s.start === "2027-01-27"))
+    .map((s) => (s.name === "Penang" ? { ...s, end: "2027-01-28" } : s));
   delete t.fareGroups;
   delete t.layovers;
   t.activities = t.activities.filter((a) => !a.layoverId);
@@ -55,12 +84,12 @@ describe("Malaysia-only round-trip ticket", () => {
     ).toBe(35550);
     expect(transportationTotals(t)).toEqual({
       international: 35550,
-      domestic: 6000,
+      domestic: 9297,
       local: 5000,
-      total: 46550,
+      total: 49847,
     });
-    expect(costOverview(t).flights).toBe(41550);
-    expect(costOverview(t).flightCount).toBe(4);
+    expect(costOverview(t).flights).toBe(44847);
+    expect(costOverview(t).flightCount).toBe(5);
   });
   it("leaves domestic flights and selected hotels unchanged during the explicit update", () => {
     const old = legacyMalaysia();
@@ -244,8 +273,9 @@ describe("Singapore transit without overnight assumptions", () => {
     ).toBe(true);
   });
   it("includes optional excursion costs once and only when enabled, without touching the other trip", () => {
-    const s = seed(),
-      t = s.trips[1],
+    const s = seed();
+    s.trips[1] = applyMalaysiaPlan(legacyMalaysia());
+    const t = s.trips[1],
       other = structuredClone(s.trips[0]),
       a = t.activities.find((a) => a.layoverId)!;
     const before = totals(t).estimated;
@@ -264,7 +294,7 @@ describe("version-1 backup extension compatibility", () => {
     const s = seed();
     expect(validate(JSON.parse(JSON.stringify(s)))).toEqual(s);
   });
-  it("continues to accept old backups without adding or repricing records on import/load", () => {
+  it("accepts old backups and corrects only Malaysia planning data at the load boundary", () => {
     const s = seed();
     s.trips[1] = legacyMalaysia();
     expect(validate(JSON.parse(JSON.stringify(s)))).toEqual(s);
@@ -275,7 +305,7 @@ describe("version-1 backup extension compatibility", () => {
       value: { getItem: (key: string) => fake.get(key) ?? null },
     });
     try {
-      expect(load().data).toEqual(s);
+      expect(load().data).toEqual(validate(correctMalaysiaStore(s)));
       expect(JSON.parse(fake.get(storageKey)!)).toEqual(s);
     } finally {
       Object.defineProperty(globalThis, "localStorage", {

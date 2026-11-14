@@ -33,7 +33,10 @@ export default function Comparison() {
       (t) =>
         t.activities
           .filter(
-            (x) => x.status !== "Cancelled" && x.includeInBudget !== false,
+            (x) =>
+              x.status !== "Cancelled" &&
+              x.includeInBudget !== false &&
+              !x.retiredTransit,
           )
           .reduce((s, x) => s + x.cost, 0),
     ],

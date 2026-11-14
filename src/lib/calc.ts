@@ -73,7 +73,7 @@ export function ledger(t: Trip): LedgerRow[] {
       total: expenseTotal(e),
       paid: netPaid(e.paid, e.refunded),
       booked: e.bookingStatus === "Booked",
-      active: e.bookingStatus !== "Cancelled",
+      active: e.bookingStatus !== "Cancelled" && e.includeInBudget !== false,
     })),
     ...t.hotels.map((h) => ({
       id: h.id,
@@ -139,7 +139,10 @@ export function ledger(t: Trip): LedgerRow[] {
       total: a.cost,
       paid: 0,
       booked: a.status === "Booked",
-      active: a.status !== "Cancelled" && a.includeInBudget !== false,
+      active:
+        a.status !== "Cancelled" &&
+        a.includeInBudget !== false &&
+        !a.retiredTransit,
     })),
   ];
 }
