@@ -16,6 +16,8 @@ export type Section =
 export type Collection =
   "expenses" | "hotels" | "transport" | "activities" | "checklist" | "stops";
 interface PlannerState {
+  hotelFocus: string;
+  setHotelFocus: Dispatch<SetStateAction<string>>;
   trip: Trip;
   summary: ReturnType<typeof totals>;
   store: Store;

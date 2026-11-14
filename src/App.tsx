@@ -87,6 +87,7 @@ export default function App() {
   const [recovery, setRecovery] = useState(initial.error);
   const [saveError, setSaveError] = useState("");
   const [section, setSection] = useState<Section>("Overview");
+  const [hotelFocus, setHotelFocus] = useState("");
   const [mobile, setMobile] = useState(false);
   const [toast, setToast] = useState("");
   const [editing, setEditing] = useState<{
@@ -382,6 +383,8 @@ export default function App() {
   return (
     <PlannerContext.Provider
       value={{
+        hotelFocus,
+        setHotelFocus,
         trip,
         summary,
         store,

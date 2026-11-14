@@ -1,116 +1,20 @@
-import type {
-  Activity,
-  CheckItem,
-  Expense,
-  Hotel,
-  Store,
-  Transport,
-  Trip,
-} from "./model";
+import type { Store, Trip } from "./model";
 import { uid } from "./model";
-export const blankExpense = (): Expense => ({
-  id: uid(),
-  description: "",
-  destination: "Kuala Lumpur",
-  category: "Food",
-  date: "2027-01-18",
-  currency: "INR",
-  amount: 0,
-  rate: 1,
-  paid: 0,
-  refunded: 0,
-  paymentStatus: "Unpaid",
-  bookingStatus: "Planned",
-  refundable: false,
-  reference: "",
-  vendor: "",
-  url: "",
-  notes: "",
-  receipt: "",
-});
-export const blankHotel = (): Hotel => ({
-  id: uid(),
-  name: "",
-  destination: "Langkawi",
-  checkIn: "2027-01-21",
-  checkOut: "2027-01-24",
-  room: "Unverified",
-  currency: "INR",
-  rate: 1,
-  nightly: null,
-  taxes: 0,
-  propertyTaxBasis: "Whole stay",
-  tourismTax: 0,
-  heritageTax: 0,
-  propertyFees: 0,
-  taxMode: "Separate",
-  breakfast: false,
-  freeCancellation: false,
-  cancellationDeadline: "",
-  bathroom: false,
-  window: false,
-  rating: null,
-  cleanliness: null,
-  distance: null,
-  website: "",
-  url: "",
-  notes:
-    "Indicative price. Room, taxes, amenities and booking conditions unverified; confirm with provider.",
-  status: "Shortlisted",
-  selected: false,
-  paid: 0,
-  refunded: 0,
-});
-export const blankTransport = (): Transport => ({
-  id: uid(),
-  source: "",
-  destination: "",
-  departureDate: "2027-01-18",
-  departureTime: "",
-  arrivalDate: "",
-  arrivalTime: "",
-  mode: "International flight",
-  provider: "",
-  number: "",
-  departureTerminal: "",
-  arrivalTerminal: "",
-  currency: "INR",
-  rate: 1,
-  fare: 0,
-  taxes: 0,
-  baggage: 0,
-  seat: 0,
-  refundable: false,
-  reference: "",
-  url: "",
-  status: "Researching",
-  paid: 0,
-  refunded: 0,
-  notes: "Provisional fare; schedule and connection protection unverified.",
-});
-export const blankActivity = (): Activity => ({
-  id: uid(),
-  name: "",
-  date: "2027-01-18",
-  start: "",
-  end: "",
-  destination: "Kuala Lumpur",
-  category: "Sightseeing",
-  cost: 0,
-  bookingRequired: false,
-  transport: "",
-  notes: "Provisional activity; illustrative price, not booked.",
-  status: "Planned",
-});
-export const blankCheck = (): CheckItem => ({
-  id: uid(),
-  title: "",
-  status: "To do",
-  priority: "Medium",
-  due: "",
-  notes: "",
-  related: "",
-});
+import {
+  blankHotel,
+  blankTransport,
+  blankExpense,
+  blankActivity,
+  blankCheck,
+} from "./factories";
+export {
+  blankHotel,
+  blankTransport,
+  blankExpense,
+  blankActivity,
+  blankCheck,
+} from "./factories";
+import { applyResearchUpdate, researchChanges } from "./research";
 const activityGroups: Record<string, [string, number, string][]> = {
   "Kuala Lumpur": [
     ["Petronas Twin Towers", 2200, "Sightseeing"],
@@ -316,7 +220,14 @@ export function makeTrip(malaysia = false): Trip {
         ? "Verify current official requirements for your passport and dates."
         : "",
   }));
-  return t;
+  return malaysia
+    ? t
+    : applyResearchUpdate(
+        t,
+        researchChanges(t)
+          .filter((c) => c.state === "ready")
+          .map((c) => c.key),
+      );
 }
 export function seed(): Store {
   const trips = [makeTrip(), makeTrip(true)];

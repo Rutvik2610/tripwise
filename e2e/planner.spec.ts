@@ -277,11 +277,11 @@ test("future trip creation, hotel taxes, transport components, and trip lifecycl
   await expect(page.locator(".hotel-card")).toContainText("₹6,270");
   await expect(page.locator(".hotel-card")).toContainText("Selected stay");
   await navigate(page, "Overview");
+  await expect(page.getByTestId("total-trip-cost")).toContainText("₹8,550");
   await expect(
-    page.locator(".stat-card").filter({ hasText: "ESTIMATED TRIP COST" }),
-  ).toContainText("₹8,550");
-  await expect(
-    page.locator(".stat-card").filter({ hasText: "ACTUALLY PAID" }),
+    page
+      .locator(".mini-stats > div")
+      .filter({ hasText: "AMOUNT ACTUALLY PAID" }),
   ).toContainText("₹1,000");
   await page.getByRole("button", { name: "My trips", exact: true }).click();
   const card = page.locator(".trip-card").filter({
@@ -380,4 +380,154 @@ test("three-night property taxes, included general tax, and violet dark theme", 
       }),
     }),
   ).toContainText("₹3,345");
+});
+
+test("financial overview responds to selected hotels, sorting, and stay links", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.getByTestId("flights-total")).toHaveText("₹48,201");
+  await expect(page.getByTestId("selected-hotels-total")).toHaveText("₹46,334");
+  await expect(page.getByTestId("flights-hotels-total")).toHaveText("₹94,535");
+  await expect(page.getByTestId("other-expenses-total")).toHaveText("₹74,700");
+  await expect(page.getByTestId("total-trip-cost")).toHaveText("₹1,69,235");
+  const kl = page
+    .locator("tr")
+    .filter({
+      has: page.getByRole("cell", { name: "Kuala Lumpur", exact: true }),
+    });
+  await kl
+    .getByRole("button", { name: "Compare alternatives", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Kuala Lumpur · 3 nights" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Hotel 81 Dickson", exact: true }),
+  ).toHaveCount(0);
+  await expect(page.getByLabel("Sort hotels", { exact: true })).toHaveValue(
+    "total",
+  );
+  const ancasa = page
+    .locator(".hotel-card")
+    .filter({
+      has: page.getByRole("heading", {
+        name: "AnCasa Hotel Kuala Lumpur, Chinatown",
+        exact: true,
+      }),
+    });
+  const moxy = page
+    .locator(".hotel-card")
+    .filter({
+      has: page.getByRole("heading", {
+        name: "Moxy Kuala Lumpur Chinatown",
+        exact: true,
+      }),
+    });
+  await moxy.getByRole("button", { name: "Select stay", exact: true }).click();
+  await expect(ancasa).toContainText("₹2,871 less than selected stay");
+  await ancasa
+    .getByRole("button", { name: "Select stay", exact: true })
+    .click();
+  await navigate(page, "Overview");
+  await expect(page.getByTestId("selected-hotels-total")).toHaveText("₹52,310");
+  await expect(page.getByTestId("flights-hotels-total")).toHaveText(
+    "₹1,00,511",
+  );
+  await expect(page.getByTestId("total-trip-cost")).toHaveText("₹1,75,211");
+  await page.reload();
+  await expect(page.getByTestId("selected-hotels-total")).toHaveText("₹52,310");
+  await navigate(page, "Hotels");
+  for (const dest of ["Kuala Lumpur", "Langkawi", "Singapore"]) {
+    await page.getByRole("button", { name: dest, exact: true }).click();
+    const selected = page.locator(".hotel-card.selected");
+    await selected
+      .getByRole("button", { name: "Deselect", exact: true })
+      .click();
+  }
+  await navigate(page, "Overview");
+  await expect(page.getByTestId("selected-hotels-total")).toHaveText("₹0");
+  await expect(page.getByTestId("flights-hotels-total")).toHaveText("₹48,201");
+  await expect(
+    page.getByText("Partial — accommodation incomplete", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("cell", { name: "Selection pending", exact: true }),
+  ).toHaveCount(3);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByTestId("total-trip-cost")).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: "/tmp/tripwise-finance-mobile.png",
+    fullPage: true,
+  });
+});
+
+test("legacy data research review preserves paid and manually edited records", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem("tripwise.v1")!);
+    const t = s.trips[0];
+    t.hotels = t.hotels.filter(
+      (h: { id: string }) => !h.id.includes(":hotel:"),
+    );
+    const first = t.transport[0];
+    first.fare = 20000;
+    first.paid = 1000;
+    first.status = "Booked";
+    first.reference = "My booking";
+    t.transport[1].fare = 3500;
+    t.transport[2].fare = 5500;
+    t.transport[2].mode = "Regional flight";
+    t.transport[3].fare = 14000;
+    t.hotels[0].notes = "My personal hotel notes";
+    localStorage.setItem("tripwise.v1", JSON.stringify(s));
+  });
+  await page.reload();
+  const before = await page.evaluate(
+    () => JSON.parse(localStorage.getItem("tripwise.v1")!).trips,
+  );
+  await page
+    .getByRole("button", { name: "Review research update", exact: true })
+    .click();
+  const pack = page.locator(".research-update");
+  await expect(pack).toContainText("Booking/payment history preserved");
+  await pack
+    .getByRole("button", {
+      name: "Apply safe additions & untouched fares",
+      exact: true,
+    })
+    .click();
+  const after = await page.evaluate(
+    () => JSON.parse(localStorage.getItem("tripwise.v1")!).trips,
+  );
+  expect(after[0].transport).toHaveLength(4);
+  expect(after[0].transport[0]).toEqual(before[0].transport[0]);
+  expect(after[0].transport[1].fare).toBe(3567);
+  expect(after[0].transport[2].fare).toBe(5197);
+  expect(after[0].transport[3].fare).toBe(15312);
+  expect(after[0].hotels).toHaveLength(before[0].hotels.length + 6);
+  expect(
+    after[0].hotels.filter((h: { selected: boolean }) => h.selected),
+  ).toEqual(before[0].hotels.filter((h: { selected: boolean }) => h.selected));
+  expect(after[0].hotels[0].notes).toBe("My personal hotel notes");
+  expect(after[1]).toEqual(before[1]);
+  await expect(
+    pack.getByRole("button", {
+      name: "Apply safe additions & untouched fares",
+      exact: true,
+    }),
+  ).toBeDisabled();
+  await page.reload();
+  expect(
+    await page.evaluate(
+      () => JSON.parse(localStorage.getItem("tripwise.v1")!).trips,
+    ),
+  ).toEqual(after);
 });

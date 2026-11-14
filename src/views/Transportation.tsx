@@ -1,3 +1,4 @@
+import { ResearchUpdate } from "../components/ResearchUpdate";
 import {
   ArrowRight,
   Clock,
@@ -41,6 +42,7 @@ export default function Transportation() {
   );
   return (
     <>
+      <ResearchUpdate />
       <div className="stat-grid three">
         <Stat
           label="TRANSPORTATION ESTIMATE"

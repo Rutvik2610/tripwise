@@ -1,3 +1,6 @@
+import { ResearchUpdate } from "../components/ResearchUpdate";
+import { hotelDifference } from "../lib/overview";
+import { blankHotel } from "../lib/factories";
 import {
   BedDouble,
   Check,
@@ -22,21 +25,66 @@ import { usePlanner } from "../lib/context";
 import { dateLabel, safeUrl, shortDate } from "../lib/format";
 
 export default function Hotels() {
-  const { trip, summary, money, updateTrip, add, editActions, setToast } =
-    usePlanner();
+  const {
+    trip,
+    summary,
+    money,
+    updateTrip,
+    startEdit,
+    editActions,
+    setToast,
+    hotelFocus,
+    setHotelFocus,
+  } = usePlanner();
   const [hotelDestination, setHotelDestination] = useState("");
-  const hotelStops = [...new Set(trip.hotels.map((h) => h.destination))];
-  const currentDestination = hotelStops.includes(hotelDestination)
-    ? hotelDestination
-    : hotelStops.includes("Langkawi")
-      ? "Langkawi"
-      : (hotelStops[0] ?? "");
+  const [sort, setSort] = useState("total");
+  const hotelStops = [
+    ...new Set([
+      ...trip.stops.map((s) => s.name),
+      ...trip.hotels.map((h) => h.destination),
+    ]),
+  ];
+  const validFocus =
+    hotelFocus &&
+    [
+      ...trip.stops.map((s) => `${s.name.toLowerCase()}|${s.start}|${s.end}`),
+      ...trip.hotels.map((h) => stayKey(h).toLowerCase()),
+    ].includes(hotelFocus)
+      ? hotelFocus
+      : "";
+  const focused = hotelStops.find(
+    (d) => d.toLowerCase() === validFocus.split("|")[0],
+  );
+  const currentDestination =
+    focused ??
+    (hotelStops.includes(hotelDestination)
+      ? hotelDestination
+      : hotelStops.includes("Langkawi")
+        ? "Langkawi"
+        : (hotelStops[0] ?? ""));
   const hotelOptions = trip.hotels.filter(
     (h) => h.destination === currentDestination,
   );
-  const hotelGroups = [...new Set(hotelOptions.map(stayKey))];
+  const hotelGroups = [...new Set(hotelOptions.map(stayKey))].filter(
+    (key) => !validFocus || key.toLowerCase() === validFocus,
+  );
+  const addHotel = () => {
+    const parts = validFocus.split("|");
+    const stop = trip.stops.find((s) => s.name === currentDestination);
+    startEdit(
+      "hotels",
+      {
+        ...blankHotel(),
+        destination: currentDestination,
+        checkIn: parts[1] || stop?.start || trip.start,
+        checkOut: parts[2] || stop?.end || trip.end,
+      },
+      "Add hotel option",
+    );
+  };
   return (
     <>
+      <ResearchUpdate />
       <div className="notice">
         <Info size={17} />
         <span>
@@ -51,19 +99,47 @@ export default function Hotels() {
             <button
               className={d === currentDestination ? "active" : ""}
               key={d}
-              onClick={() => setHotelDestination(d)}
+              onClick={() => {
+                setHotelDestination(d);
+                setHotelFocus("");
+              }}
             >
               {d}
             </button>
           ))}
         </div>
-        <button className="button" onClick={() => add("hotels")}>
+        <label className="hotel-sort">
+          Sort hotels{" "}
+          <select
+            aria-label="Sort hotels"
+            value={sort}
+            onChange={(e) => setSort(e.target.value)}
+          >
+            <option value="total">Total stay cost</option>
+            <option value="nightly">Complete nightly cost</option>
+            <option value="review">Review score</option>
+          </select>
+        </label>
+        <button className="button" onClick={addHotel}>
           <Plus size={16} />
           Add hotel
         </button>
       </div>
       {hotelGroups.map((key) => {
-        const options = hotelOptions.filter((h) => stayKey(h) === key);
+        const options = hotelOptions
+          .filter((h) => stayKey(h) === key)
+          .sort((a, b) => {
+            if (sort === "review") return (b.rating ?? -1) - (a.rating ?? -1);
+            const price = (h: typeof a) => {
+              const total = hotelTotal(h);
+              return total === null
+                ? Infinity
+                : sort === "nightly"
+                  ? total / (daysBetween(h.checkIn, h.checkOut) || 1)
+                  : total;
+            };
+            return price(a) - price(b);
+          });
         const priced = options.filter(
           (h) => hotelTotal(h) !== null && h.status !== "Cancelled",
         );
@@ -96,6 +172,7 @@ export default function Hotels() {
               {options.map((h) => {
                 const cost = hotelTotal(h);
                 const breakdown = hotelBreakdown(h);
+                const difference = hotelDifference(trip, h.id);
                 return (
                   <article
                     key={h.id}
@@ -127,10 +204,30 @@ export default function Hotels() {
                       <strong>
                         {h.nightly === null
                           ? "Price pending"
-                          : money(convert(h.nightly, h.rate))}
+                          : money(
+                              (cost ?? convert(h.nightly, h.rate)) /
+                                (breakdown.nights || 1),
+                            )}
                       </strong>
                       <span>{h.nightly !== null ? "/ night" : ""}</span>
                     </div>
+                    {h.nightly !== null && (
+                      <p className="hotel-price-detail">
+                        {money(convert(h.nightly, h.rate))} displayed room /
+                        night + {money(breakdown.generalTax)} separate general
+                        tax per stay. Nightly headline spreads the full stay
+                        total over {breakdown.nights} nights.
+                      </p>
+                    )}
+                    {difference !== null && !h.selected && (
+                      <div className="hotel-difference">
+                        {difference < 0
+                          ? `${money(-difference)} less than selected stay`
+                          : difference > 0
+                            ? `${money(difference)} more than selected stay`
+                            : "Same price as selected stay"}
+                      </div>
+                    )}
                     <div className="hotel-facts">
                       <div>
                         <span>Total stay, incl. property charges</span>
@@ -344,7 +441,7 @@ export default function Hotels() {
         );
       })}
       {!hotelOptions.length && (
-        <Empty label="Find a place to call home" onAdd={() => add("hotels")} />
+        <Empty label="Find a place to call home" onAdd={addHotel} />
       )}
       <Panel
         title="Your selected accommodation"
