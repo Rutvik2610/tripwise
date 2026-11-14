@@ -121,7 +121,7 @@ const normalized = (s: string) =>
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
-export function isResearchTrip(t: Trip) {
+function isSingaporeResearchTrip(t: Trip) {
   return (
     t.start === "2027-01-18" &&
     t.end === "2027-01-28" &&
@@ -129,6 +129,17 @@ export function isResearchTrip(t: Trip) {
       t.stops.some((s) => normalized(s.name) === normalized(name)),
     ) &&
     !t.stops.some((s) => normalized(s.name) === "penang")
+  );
+}
+export function isResearchTrip(t: Trip) {
+  return (
+    isSingaporeResearchTrip(t) ||
+    (t.start === "2027-01-18" &&
+      t.end === "2027-01-28" &&
+      ["Kuala Lumpur", "Langkawi", "Penang"].every((name) =>
+        t.stops.some((s) => normalized(s.name) === normalized(name)),
+      ) &&
+      !t.stops.some((s) => normalized(s.name) === "singapore"))
   );
 }
 const airport = (s: string) => {
@@ -169,7 +180,9 @@ export interface ResearchChange {
 export function researchChanges(t: Trip): ResearchChange[] {
   if (!isResearchTrip(t)) return [];
   const changes: ResearchChange[] = [];
-  for (const quote of hotelQuotes) {
+  for (const quote of hotelQuotes.filter(
+    (q) => q.destination === "Kuala Lumpur" || isSingaporeResearchTrip(t),
+  )) {
     const start =
         quote.destination === "Singapore" ? "2027-01-24" : "2027-01-18",
       end = quote.destination === "Singapore" ? "2027-01-28" : "2027-01-21";
@@ -254,7 +267,7 @@ export function researchChanges(t: Trip): ResearchChange[] {
       existingId: existing?.id,
     });
   }
-  for (const quote of flightQuotes) {
+  for (const quote of isSingaporeResearchTrip(t) ? flightQuotes : []) {
     const key = `${t.id}:flight:${quote.key}`;
     let matches = t.transport.filter(
       (r) =>

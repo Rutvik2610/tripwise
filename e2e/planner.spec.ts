@@ -391,11 +391,9 @@ test("financial overview responds to selected hotels, sorting, and stay links", 
   await expect(page.getByTestId("flights-hotels-total")).toHaveText("₹94,535");
   await expect(page.getByTestId("other-expenses-total")).toHaveText("₹74,700");
   await expect(page.getByTestId("total-trip-cost")).toHaveText("₹1,69,235");
-  const kl = page
-    .locator("tr")
-    .filter({
-      has: page.getByRole("cell", { name: "Kuala Lumpur", exact: true }),
-    });
+  const kl = page.locator("tr").filter({
+    has: page.getByRole("cell", { name: "Kuala Lumpur", exact: true }),
+  });
   await kl
     .getByRole("button", { name: "Compare alternatives", exact: true })
     .click();
@@ -408,22 +406,18 @@ test("financial overview responds to selected hotels, sorting, and stay links", 
   await expect(page.getByLabel("Sort hotels", { exact: true })).toHaveValue(
     "total",
   );
-  const ancasa = page
-    .locator(".hotel-card")
-    .filter({
-      has: page.getByRole("heading", {
-        name: "AnCasa Hotel Kuala Lumpur, Chinatown",
-        exact: true,
-      }),
-    });
-  const moxy = page
-    .locator(".hotel-card")
-    .filter({
-      has: page.getByRole("heading", {
-        name: "Moxy Kuala Lumpur Chinatown",
-        exact: true,
-      }),
-    });
+  const ancasa = page.locator(".hotel-card").filter({
+    has: page.getByRole("heading", {
+      name: "AnCasa Hotel Kuala Lumpur, Chinatown",
+      exact: true,
+    }),
+  });
+  const moxy = page.locator(".hotel-card").filter({
+    has: page.getByRole("heading", {
+      name: "Moxy Kuala Lumpur Chinatown",
+      exact: true,
+    }),
+  });
   await moxy.getByRole("button", { name: "Select stay", exact: true }).click();
   await expect(ancasa).toContainText("₹2,871 less than selected stay");
   await ancasa
@@ -530,4 +524,85 @@ test("legacy data research review preserves paid and manually edited records", a
       () => JSON.parse(localStorage.getItem("tripwise.v1")!).trips,
     ),
   ).toEqual(after);
+});
+
+test("Malaysia-only trip receives shared Kuala Lumpur quotes safely across fresh and existing browsers", async ({
+  page,
+  browser,
+}) => {
+  await page.goto("/");
+  await page
+    .getByLabel("Active trip", { exact: true })
+    .selectOption({ label: "Malaysia only · Three islands & cities" });
+  await navigate(page, "Hotels");
+  await page.getByRole("button", { name: "Kuala Lumpur", exact: true }).click();
+  await expect(
+    page.getByRole("heading", {
+      name: "AnCasa Hotel Kuala Lumpur, Chinatown",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: "Holiday Inn Express Kuala Lumpur City Centre",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(page.locator(".hotel-card")).toHaveCount(6);
+  await page.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem("tripwise.v1")!);
+    const t = s.trips.find((t: { id: string }) => t.id === s.activeId);
+    t.hotels = t.hotels.filter(
+      (h: { id: string }) => !h.id.includes(":hotel:"),
+    );
+    localStorage.setItem("tripwise.v1", JSON.stringify(s));
+  });
+  await page.reload();
+  const before = await page.evaluate(
+    () => JSON.parse(localStorage.getItem("tripwise.v1")!).trips,
+  );
+  await page
+    .getByRole("button", { name: "Review research update", exact: true })
+    .click();
+  await page
+    .getByRole("button", {
+      name: "Apply safe additions & untouched fares",
+      exact: true,
+    })
+    .click();
+  const after = await page.evaluate(
+    () => JSON.parse(localStorage.getItem("tripwise.v1")!).trips,
+  );
+  expect(after[0]).toEqual(before[0]);
+  expect(after[1].transport).toEqual(before[1].transport);
+  expect(after[1].hotels.length - before[1].hotels.length).toBe(5);
+  expect(
+    after[1].hotels.filter((h: { selected: boolean }) => h.selected),
+  ).toEqual(before[1].hotels.filter((h: { selected: boolean }) => h.selected));
+  await expect(
+    page.getByRole("button", {
+      name: "Apply safe additions & untouched fares",
+      exact: true,
+    }),
+  ).toBeDisabled();
+  const fresh = await browser.newContext();
+  const freshPage = await fresh.newPage();
+  await freshPage.goto("/");
+  await freshPage
+    .getByLabel("Active trip", { exact: true })
+    .selectOption({ label: "Malaysia only · Three islands & cities" });
+  await freshPage
+    .getByRole("navigation")
+    .getByRole("button", { name: "Hotels", exact: true })
+    .click();
+  await freshPage
+    .getByRole("button", { name: "Kuala Lumpur", exact: true })
+    .click();
+  await expect(
+    freshPage.getByRole("heading", {
+      name: "AnCasa Hotel Kuala Lumpur, Chinatown",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await fresh.close();
 });

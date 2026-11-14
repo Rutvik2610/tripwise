@@ -313,3 +313,44 @@ describe("clear financial overview", () => {
     expect(s.retainedHotelCosts).toBe(300);
   });
 });
+
+describe("shared Kuala Lumpur research for Malaysia-only trips", () => {
+  it("seeds five matching Kuala Lumpur candidates without Singapore hotels or flight updates", () => {
+    const t = makeTrip(true);
+    const candidates = t.hotels.filter((h) => h.id.includes(":hotel:"));
+    expect(candidates).toHaveLength(5);
+    expect(
+      candidates.every(
+        (h) =>
+          h.destination === "Kuala Lumpur" &&
+          h.checkIn === "2027-01-18" &&
+          h.checkOut === "2027-01-21" &&
+          !h.selected &&
+          h.paid === 0,
+      ),
+    ).toBe(true);
+    expect(candidates.map(hotelTotal)).toEqual([
+      13476, 16347, 15588, 9360, 17436,
+    ]);
+    expect(t.hotels.some((h) => h.destination === "Singapore")).toBe(false);
+    expect(t.transport.map(transportTotal)).toEqual([12500, 3500, 2500, 12000]);
+  });
+  it("adds shared candidates to older saved trips once and preserves their selections, financial history and other records", () => {
+    const t = makeTrip(true);
+    t.hotels = t.hotels.filter((h) => !h.id.includes(":hotel:"));
+    t.hotels[0].paid = 500;
+    t.hotels[0].notes = "Private note retained";
+    const before = structuredClone(t);
+    const next = applySafe(t);
+    expect(next.hotels).toHaveLength(before.hotels.length + 5);
+    expect(next.hotels.slice(0, before.hotels.length)).toEqual(before.hotels);
+    expect(next.transport).toEqual(before.transport);
+    expect(next.expenses).toEqual(before.expenses);
+    expect(next.activities).toEqual(before.activities);
+    expect(next.checklist).toEqual(before.checklist);
+    expect(applySafe(next)).toEqual(next);
+    expect(researchChanges(next).some((c) => c.kind === "transport")).toBe(
+      false,
+    );
+  });
+});

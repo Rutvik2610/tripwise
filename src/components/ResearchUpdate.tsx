@@ -22,7 +22,7 @@ export function ResearchUpdate() {
           <p>
             {pending.length
               ? `${pending.length} additions or records to review. Existing selections and payments stay intact.`
-              : "All supplied hotel and flight quotes are available."}{" "}
+              : "All applicable research quotes are available."}{" "}
             Manually supplied estimates, not live prices.
           </p>
         </div>
@@ -33,7 +33,7 @@ export function ResearchUpdate() {
       {open && (
         <Panel
           title="Review before applying"
-          sub="Only this Malaysia + Singapore trip changes. Export a backup first if you wish."
+          sub="Only the current trip changes. Shared Kuala Lumpur candidates apply to both itineraries; Singapore quotes apply only to that itinerary. Export a backup first if you wish."
           action={
             <button className="text-button" onClick={exportData}>
               Export backup

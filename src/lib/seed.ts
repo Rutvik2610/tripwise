@@ -220,14 +220,12 @@ export function makeTrip(malaysia = false): Trip {
         ? "Verify current official requirements for your passport and dates."
         : "",
   }));
-  return malaysia
-    ? t
-    : applyResearchUpdate(
-        t,
-        researchChanges(t)
-          .filter((c) => c.state === "ready")
-          .map((c) => c.key),
-      );
+  return applyResearchUpdate(
+    t,
+    researchChanges(t)
+      .filter((c) => c.state === "ready")
+      .map((c) => c.key),
+  );
 }
 export function seed(): Store {
   const trips = [makeTrip(), makeTrip(true)];
