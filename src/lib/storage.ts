@@ -69,6 +69,7 @@ const time = z.union([
   z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
 ]);
 const transport = z.object({
+  fareGroupId: id.optional(),
   id,
   source: str.min(1),
   destination: str.min(1),
@@ -106,6 +107,9 @@ const transport = z.object({
   notes: str,
 });
 const activity = z.object({
+  layoverId: id.optional(),
+  includeInBudget: z.boolean().optional(),
+  costPending: z.boolean().optional(),
   id,
   name: str.min(1),
   date,
@@ -144,7 +148,53 @@ const stop = z.object({
   start: date,
   end: date,
 });
+const fareGroup = z.object({
+  id,
+  name: str.min(1),
+  amount: num,
+  currency,
+  rate: num.positive(),
+  status,
+  paid: num,
+  refunded: num,
+  reference: str,
+  notes: str,
+  passengers: num.int().min(1).max(100),
+  cabin: str,
+});
+const layover = z.object({
+  id,
+  fareGroupId: id.optional(),
+  airport: z.literal("SIN"),
+  timezone: z.literal("Asia/Singapore"),
+  date,
+  direction: z.enum(["Unknown", "Outbound", "Inbound"]),
+  arrivalTime: time,
+  departureTime: time,
+  arrivalTerminal: str,
+  departureTerminal: str,
+  entry: z.enum([
+    "Verification pending",
+    "Verified permitted",
+    "Not permitted",
+  ]),
+  baggage: z.enum(["Unknown", "Yes", "No"]),
+  protectedConnection: z.enum(["Unknown", "Yes", "No"]),
+  additionalCheckIn: z.enum(["Unknown", "Yes", "No"]),
+  option: z.enum(["Undecided", "Airport", "City"]),
+  disembarkation: num.int().max(1440).nullable(),
+  immigration: num.int().max(1440).nullable(),
+  travelOut: num.int().max(1440).nullable(),
+  travelBack: num.int().max(1440).nullable(),
+  formalities: num.int().max(1440).nullable(),
+  baggageCheckIn: num.int().max(1440).nullable(),
+  safetyBuffer: num.int().max(1440).nullable(),
+  airlineUrl: str,
+  notes: str,
+});
 const trip = z.object({
+  fareGroups: z.array(fareGroup).max(1000).optional(),
+  layovers: z.array(layover).max(1000).optional(),
   id,
   name: str.min(1),
   departure: str,
@@ -175,6 +225,8 @@ const trip = z.object({
   }),
 });
 export const schemas = {
+  fareGroups: fareGroup,
+  layovers: layover,
   expenses: expense,
   hotels: hotel,
   transport,
@@ -207,10 +259,43 @@ export function validate(raw: unknown): Store {
       ...t.transport,
       ...t.activities,
       ...t.checklist,
+      ...(t.fareGroups ?? []),
+      ...(t.layovers ?? []),
     ]) {
       if (ids.has(entry.id)) throw Error("Duplicate record IDs in backup.");
       ids.add(entry.id);
     }
+    const groupIds = new Set((t.fareGroups ?? []).map((g) => g.id));
+    for (const g of t.fareGroups ?? []) {
+      if (g.refunded > g.paid)
+        throw Error("Ticket refunds cannot exceed payments.");
+      if (g.currency === "INR" && g.rate !== 1)
+        throw Error("INR ticket rate must be 1.");
+    }
+    for (const r of t.transport)
+      if (r.fareGroupId) {
+        if (!groupIds.has(r.fareGroupId))
+          throw Error("Flight references a missing fare group.");
+        if (
+          r.fare ||
+          r.taxes ||
+          r.baggage ||
+          r.seat ||
+          r.paid ||
+          r.refunded ||
+          r.status === "Booked" ||
+          r.reference
+        )
+          throw Error(
+            "Linked legs must keep fares, bookings and payments at ticket level; leg allocation is unknown.",
+          );
+      }
+    for (const l of t.layovers ?? [])
+      if (l.fareGroupId && !groupIds.has(l.fareGroupId))
+        throw Error("Transit references a missing ticket.");
+    for (const a of t.activities)
+      if (a.layoverId && !(t.layovers ?? []).some((l) => l.id === a.layoverId))
+        throw Error("Activity references a missing layover.");
     if (!t.start || !t.end || t.end < t.start)
       throw Error("Invalid trip date range.");
     if ((Date.parse(t.end) - Date.parse(t.start)) / 86400000 > 729)

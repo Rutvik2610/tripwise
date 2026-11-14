@@ -1,3 +1,6 @@
+import { TransitPlanning } from "../components/TransitPlanning";
+import { transportationTotals } from "../lib/transit";
+import { convert } from "../lib/calc";
 import { ResearchUpdate } from "../components/ResearchUpdate";
 import {
   ArrowRight,
@@ -25,10 +28,8 @@ export default function Transportation() {
   const activeTransport = trip.transport.filter(
     (t) => t.status !== "Cancelled",
   );
-  const transportCost = activeTransport.reduce(
-    (s, t) => s + transportTotal(t),
-    0,
-  );
+  const figures = transportationTotals(trip);
+  const transportCost = figures.total;
   const knownDurations = activeTransport
     .map(travelMinutes)
     .filter((n): n is number => n !== null && n >= 0);
@@ -40,14 +41,29 @@ export default function Transportation() {
         .reduce((s, t) => s + transportTotal(t), 0),
     }),
   );
+  for (const g of trip.fareGroups ?? []) {
+    if (g.status === "Cancelled") continue;
+    const found = byMode.find((r) => r.name === "International flight");
+    const value = convert(g.amount, g.rate);
+    if (found) found.estimated += value;
+    else byMode.push({ name: "International flight", estimated: value });
+  }
+  const remainingTransport =
+    transportCost - byMode.reduce((s, r) => s + r.estimated, 0);
+  if (remainingTransport > 0)
+    byMode.push({
+      name: "Other transport estimates",
+      estimated: remainingTransport,
+    });
   return (
     <>
       <ResearchUpdate />
+      <TransitPlanning />
       <div className="stat-grid three">
         <Stat
           label="TRANSPORTATION ESTIMATE"
           value={money(transportCost)}
-          detail="Base fare + taxes + baggage + seats"
+          detail="Ticket fares + domestic flights + local / airport transport"
           icon={Wallet}
         />
         <Stat
@@ -134,14 +150,16 @@ export default function Transportation() {
                   <details>
                     <summary>Fare & booking details</summary>
                     <p>
-                      Base {t.fare} + taxes {t.taxes} + baggage {t.baggage} +
-                      seats {t.seat} {t.currency}. Rate: {t.rate} INR/
-                      {t.currency}.
+                      {t.fareGroupId
+                        ? "Individual-leg allocation unknown. This flight is included in the shared round-trip fare; edit amounts on the ticket card."
+                        : `Base ${t.fare} + taxes ${t.taxes} + baggage ${t.baggage} + seats ${t.seat} ${t.currency}. Rate: ${t.rate} INR/${t.currency}.`}
                     </p>
                     <p>
                       {t.refundable ? "Refundable" : "Refundability unverified"}{" "}
                       · Ref: {t.reference || "None"} ·{" "}
-                      {paymentState(transportTotal(t), t.paid, t.refunded)}
+                      {t.fareGroupId
+                        ? "Payment recorded on ticket"
+                        : paymentState(transportTotal(t), t.paid, t.refunded)}
                     </p>
                     <p>{t.notes}</p>
                     {safeUrl(t.url) && (
@@ -156,9 +174,17 @@ export default function Transportation() {
                   </details>
                 </div>
                 <div className="transport-price">
-                  <strong>{money(transportTotal(t))}</strong>
+                  <strong className={t.fareGroupId ? "linked-fare-label" : ""}>
+                    {t.fareGroupId
+                      ? "Included in round-trip ticket"
+                      : money(transportTotal(t))}
+                  </strong>
                   <Badge tone={t.status === "Booked" ? "green" : ""}>
-                    {t.status}
+                    {t.fareGroupId
+                      ? `Ticket: ${trip.fareGroups?.find((g) => g.id === t.fareGroupId)?.status ?? "Researching"}`
+                      : t.notes.includes("Superseded unpaid Penang")
+                        ? "Superseded estimate"
+                        : t.status}
                   </Badge>
                   {editActions("transport", t)}
                 </div>

@@ -1,3 +1,5 @@
+import { TransitPlanning } from "../components/TransitPlanning";
+import { attachedLayoverLeg } from "../lib/transit";
 import { GripVertical, MapPin, Plus } from "lucide-react";
 import { useRef, useState } from "react";
 import { TimelineChart } from "../components/Charts";
@@ -10,6 +12,13 @@ import { blankActivity } from "../lib/seed";
 export default function Itinerary() {
   const { trip, summary, money, updateTrip, startEdit, add, editActions } =
     usePlanner();
+  const visibleActivities = trip.activities.filter(
+    (a) =>
+      !a.layoverId ||
+      trip.layovers?.some(
+        (l) => l.id === a.layoverId && !!attachedLayoverLeg(trip, l),
+      ),
+  );
   const duration = summary.days;
   const [itineraryView, setItineraryView] = useState("Timeline");
   const [dayFilter, setDayFilter] = useState("All");
@@ -50,6 +59,7 @@ export default function Itinerary() {
   };
   return (
     <>
+      <TransitPlanning />
       <div className="page-actions">
         <div className="tabs">
           {["Timeline", "Calendar"].map((v) => (
@@ -119,7 +129,7 @@ export default function Itinerary() {
           itineraryView === "Calendar" ? "calendar-grid" : "timeline-days"
         }
       >
-        {[...new Set([...days, ...trip.activities.map((a) => a.date)])]
+        {[...new Set([...days, ...visibleActivities.map((a) => a.date)])]
           .sort()
           .filter((d) => dayFilter === "All" || d === dayFilter)
           .map((d) => (
@@ -136,12 +146,17 @@ export default function Itinerary() {
                 <span className="muted">
                   {money(
                     trip.activities
-                      .filter((a) => a.date === d && a.status !== "Cancelled")
+                      .filter(
+                        (a) =>
+                          a.date === d &&
+                          a.status !== "Cancelled" &&
+                          a.includeInBudget !== false,
+                      )
                       .reduce((s, a) => s + a.cost, 0),
                   )}
                 </span>
               </header>
-              {trip.activities
+              {visibleActivities
                 .filter((a) => a.date === d)
                 .map((a) => (
                   <article
@@ -171,7 +186,12 @@ export default function Itinerary() {
                         <Badge tone={a.status === "Booked" ? "green" : ""}>
                           {a.status}
                         </Badge>
-                        <span>{money(a.cost)}</span>
+                        <span>
+                          {a.costPending ? "Price pending" : money(a.cost)}
+                          {a.includeInBudget === false
+                            ? " · Optional / excluded"
+                            : ""}
+                        </span>
                         {a.bookingRequired && <span>Booking required</span>}
                       </div>
                       <details>
@@ -199,7 +219,7 @@ export default function Itinerary() {
                     </div>
                   </article>
                 ))}
-              {!trip.activities.some((a) => a.date === d) && (
+              {!visibleActivities.some((a) => a.date === d) && (
                 <button
                   className="day-empty"
                   onClick={() =>

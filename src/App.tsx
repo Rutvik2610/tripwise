@@ -184,12 +184,32 @@ export default function App() {
     );
   };
   const remove = (kind: Collection, id: string) => {
+    if (
+      kind === "transport" &&
+      trip.transport.find((r) => r.id === id)?.fareGroupId
+    ) {
+      setToast(
+        "This leg belongs to a shared return ticket. Edit the leg or cancel the ticket from its card instead.",
+      );
+      return;
+    }
     if (confirm("Delete this entry? This cannot be undone."))
       updateTrip((t) => ({ ...t, [kind]: t[kind].filter((x) => x.id !== id) }));
   };
   const duplicate = (kind: Collection, id: string) =>
     updateTrip((t) => {
       const item = t[kind].find((x) => x.id === id);
+      if (
+        kind === "transport" &&
+        item &&
+        "fareGroupId" in item &&
+        item.fareGroupId
+      ) {
+        setToast(
+          "Linked ticket legs share one fare. Add a separate transport record if you need another journey.",
+        );
+        return t;
+      }
       return item
         ? {
             ...t,

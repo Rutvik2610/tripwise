@@ -1,3 +1,4 @@
+import { TransitPlanning } from "../components/TransitPlanning";
 import {
   ArrowUpRight,
   CalendarDays,
@@ -25,6 +26,7 @@ export default function Dashboard() {
   return (
     <>
       <CostOverview />
+      <TransitPlanning compact />
       <ResearchUpdate />
       <Panel
         title="Where your money goes"

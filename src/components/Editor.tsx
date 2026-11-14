@@ -22,6 +22,7 @@ export interface Field {
   nullable?: boolean;
   max?: number;
   hint?: string;
+  layoverOnly?: boolean;
 }
 const f = (
   key: string,
@@ -48,6 +49,82 @@ const booking = [
   f("notes", "Notes", "textarea"),
 ];
 export const fields: Record<string, Field[]> = {
+  fareGroups: [
+    f("name", "Ticket name", "text", { required: true }),
+    f("amount", "Total round-trip fare", "number"),
+    ...money,
+    select("status", "Ticket booking status", bookingStatuses),
+    ...payments,
+    f("reference", "Ticket booking reference"),
+    f("passengers", "Passengers", "number"),
+    f("cabin", "Cabin"),
+    f("notes", "Ticket notes", "textarea"),
+  ],
+  layovers: [
+    f("date", "Confirmed layover date", "date"),
+    select("direction", "Confirmed journey direction", [
+      "Unknown",
+      "Outbound",
+      "Inbound",
+    ]),
+    f("arrivalTime", "Singapore arrival local time", "time", {
+      required: true,
+    }),
+    f("departureTime", "Singapore departure local time", "time", {
+      required: true,
+    }),
+    f("arrivalTerminal", "Arrival terminal"),
+    f("departureTerminal", "Departure terminal"),
+    select("entry", "Entry permission verification", [
+      "Verification pending",
+      "Verified permitted",
+      "Not permitted",
+    ]),
+    select("baggage", "Baggage checked through", ["Unknown", "Yes", "No"]),
+    select("protectedConnection", "Protected connection verified", [
+      "Unknown",
+      "Yes",
+      "No",
+    ]),
+    select("additionalCheckIn", "Additional airline check-in required", [
+      "Unknown",
+      "Yes",
+      "No",
+    ]),
+    select("option", "Sightseeing option", ["Undecided", "Airport", "City"]),
+    ...(
+      [
+        "disembarkation",
+        "immigration",
+        "travelOut",
+        "travelBack",
+        "formalities",
+        "baggageCheckIn",
+        "safetyBuffer",
+      ] as const
+    ).map((key, i) =>
+      f(
+        key,
+        [
+          "Disembarkation allowance (minutes)",
+          "Immigration allowance (minutes)",
+          "Airport to sightseeing travel (minutes)",
+          "Return to airport travel (minutes)",
+          "Departure security & formalities (minutes)",
+          "Additional baggage/check-in time (minutes)",
+          "Additional preflight safety buffer (minutes)",
+        ][i],
+        "number",
+        {
+          nullable: true,
+          max: 1440,
+          hint: "Leave blank until researched. These are manual planning assumptions, not guaranteed processing times.",
+        },
+      ),
+    ),
+    f("airlineUrl", "Official airline guidance URL", "url"),
+    f("notes", "Transit notes", "textarea"),
+  ],
   trip: [
     f("name", "Trip name", "text", { required: true }),
     f("departure", "Departure city"),
@@ -135,7 +212,7 @@ export const fields: Record<string, Field[]> = {
   transport: [
     f("source", "Source / airport code", "text", { required: true }),
     f("destination", "Destination / airport code", "text", { required: true }),
-    f("departureDate", "Departure date", "date", { required: true }),
+    f("departureDate", "Departure date", "date"),
     f("departureTime", "Departure local time", "time"),
     f("arrivalDate", "Arrival date", "date"),
     f("arrivalTime", "Arrival local time", "time"),
@@ -181,6 +258,15 @@ export const fields: Record<string, Field[]> = {
       "Transportation",
     ]),
     f("cost", "Estimated cost (INR)", "number"),
+    f("costPending", "Price estimate pending", "checkbox", {
+      layoverOnly: true,
+    }),
+    f(
+      "includeInBudget",
+      "Include optional excursion in plan and budget",
+      "checkbox",
+      { layoverOnly: true },
+    ),
     f("bookingRequired", "Booking required", "checkbox"),
     f("transport", "Transport requirements"),
     select("status", "Status", ["Planned", "Booked", "Completed", "Cancelled"]),
@@ -219,7 +305,7 @@ export function Editor({
       if (e.key === "Escape") onClose();
       if (e.key === "Tab") {
         const items = modalRef.current?.querySelectorAll<HTMLElement>(
-          "button:not(:disabled),input,select,textarea,a[href]",
+          "button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea,a[href]",
         );
         if (!items?.length) return;
         const first = items[0],
@@ -286,87 +372,121 @@ export function Editor({
             }
           }}
         >
+          {kind === "transport" && !!value.fareGroupId && (
+            <p className="notice">
+              This leg belongs to a round-trip ticket. Edit fare, booking
+              status, reference and payments on the ticket card. Individual-leg
+              pricing is unknown.
+            </p>
+          )}
           <div className="form-grid">
-            {fields[kind].map((field) => (
-              <label
-                className={field.type === "textarea" ? "span-2" : ""}
-                key={field.key}
-              >
-                {field.type === "checkbox" ? (
-                  <span className="checkbox-field">
-                    <input
-                      type="checkbox"
-                      checked={Boolean(value[field.key])}
-                      onChange={(e) =>
-                        setValue({ ...value, [field.key]: e.target.checked })
-                      }
-                    />
-                    {field.label}
-                  </span>
-                ) : (
-                  <>
-                    <span>{field.label}</span>
-                    {field.type === "select" ? (
-                      <select
-                        aria-label={field.label}
-                        value={String(value[field.key] ?? "")}
-                        onChange={(e) =>
-                          setValue({
-                            ...value,
-                            [field.key]: e.target.value,
-                            ...(field.key === "currency"
-                              ? { rate: rates[e.target.value as Currency] }
-                              : {}),
-                          })
-                        }
-                      >
-                        {field.options?.map((o) => (
-                          <option key={o}>{o}</option>
-                        ))}
-                      </select>
-                    ) : field.type === "textarea" ? (
-                      <textarea
-                        aria-label={field.label}
-                        rows={3}
-                        value={String(value[field.key] ?? "")}
-                        onChange={(e) =>
-                          setValue({ ...value, [field.key]: e.target.value })
-                        }
-                      />
-                    ) : (
+            {fields[kind]
+              .filter((field) => !field.layoverOnly || value.layoverId)
+              .map((field) => (
+                <label
+                  className={field.type === "textarea" ? "span-2" : ""}
+                  key={field.key}
+                >
+                  {field.type === "checkbox" ? (
+                    <span className="checkbox-field">
                       <input
-                        aria-label={field.label}
-                        autoFocus={field === fields[kind][0]}
-                        type={field.type ?? "text"}
-                        disabled={
-                          (field.key === "rate" && value.currency === "INR") ||
-                          (kind === "hotels" &&
-                            field.key === "taxes" &&
-                            value.taxMode === "Included")
-                        }
-                        min={field.type === "number" ? 0 : undefined}
-                        max={field.max}
-                        step={field.type === "number" ? "any" : undefined}
-                        required={field.required}
-                        value={String(value[field.key] ?? "")}
+                        type="checkbox"
+                        checked={Boolean(value[field.key])}
                         onChange={(e) =>
-                          setValue({
-                            ...value,
-                            [field.key]:
-                              field.type === "number"
-                                ? e.target.value === "" && field.nullable
-                                  ? null
-                                  : Number(e.target.value)
-                                : e.target.value,
-                          })
+                          setValue({ ...value, [field.key]: e.target.checked })
                         }
                       />
-                    )}
-                  </>
-                )}
-                {field.hint && <small>{field.hint}</small>}
-              </label>
-            ))}
+                      {field.label}
+                    </span>
+                  ) : (
+                    <>
+                      <span>{field.label}</span>
+                      {field.type === "select" ? (
+                        <select
+                          disabled={
+                            kind === "transport" &&
+                            !!value.fareGroupId &&
+                            ["status", "currency"].includes(field.key)
+                          }
+                          aria-label={field.label}
+                          value={String(value[field.key] ?? "")}
+                          onChange={(e) =>
+                            setValue({
+                              ...value,
+                              [field.key]: e.target.value,
+                              ...(field.key === "currency"
+                                ? { rate: rates[e.target.value as Currency] }
+                                : {}),
+                            })
+                          }
+                        >
+                          {field.options?.map((o) => (
+                            <option key={o}>{o}</option>
+                          ))}
+                        </select>
+                      ) : field.type === "textarea" ? (
+                        <textarea
+                          aria-label={field.label}
+                          rows={3}
+                          value={String(value[field.key] ?? "")}
+                          onChange={(e) =>
+                            setValue({ ...value, [field.key]: e.target.value })
+                          }
+                        />
+                      ) : (
+                        <input
+                          aria-label={field.label}
+                          autoFocus={field === fields[kind][0]}
+                          type={field.type ?? "text"}
+                          disabled={
+                            (field.key === "rate" &&
+                              value.currency === "INR") ||
+                            (kind === "hotels" &&
+                              field.key === "taxes" &&
+                              value.taxMode === "Included") ||
+                            (kind === "transport" &&
+                              !!value.fareGroupId &&
+                              [
+                                "fare",
+                                "taxes",
+                                "baggage",
+                                "seat",
+                                "paid",
+                                "refunded",
+                                "currency",
+                                "rate",
+                                "reference",
+                              ].includes(field.key))
+                          }
+                          min={field.type === "number" ? 0 : undefined}
+                          max={field.max}
+                          step={field.type === "number" ? "any" : undefined}
+                          required={
+                            field.required &&
+                            !(field.key === "date" && value.layoverId)
+                          }
+                          value={String(value[field.key] ?? "")}
+                          onChange={(e) =>
+                            setValue({
+                              ...value,
+                              ...(field.key === "cost" && value.layoverId
+                                ? { costPending: false }
+                                : {}),
+                              [field.key]:
+                                field.type === "number"
+                                  ? e.target.value === "" && field.nullable
+                                    ? null
+                                    : Number(e.target.value)
+                                  : e.target.value,
+                            })
+                          }
+                        />
+                      )}
+                    </>
+                  )}
+                  {field.hint && <small>{field.hint}</small>}
+                </label>
+              ))}
           </div>
           {kind === "hotels" && (
             <HotelTaxPreview hotel={value as unknown as Hotel} />

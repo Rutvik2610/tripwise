@@ -33,14 +33,27 @@ export default function Trips() {
         "transport",
         "activities",
         "checklist",
+        "fareGroups",
+        "layovers",
       ] as const
     ).forEach((k) =>
-      copied[k].forEach((x) => {
+      copied[k]?.forEach((x) => {
         const old = x.id;
         x.id = uid();
         idMap.set(old, x.id);
       }),
     );
+    copied.transport.forEach((r) => {
+      if (r.fareGroupId)
+        r.fareGroupId = idMap.get(r.fareGroupId) ?? r.fareGroupId;
+    });
+    copied.layovers?.forEach((l) => {
+      if (l.fareGroupId)
+        l.fareGroupId = idMap.get(l.fareGroupId) ?? l.fareGroupId;
+    });
+    copied.activities.forEach((a) => {
+      if (a.layoverId) a.layoverId = idMap.get(a.layoverId) ?? a.layoverId;
+    });
     copied.checklist.forEach((c) => {
       c.related = idMap.get(c.related) ?? c.related;
     });

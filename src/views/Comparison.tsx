@@ -1,8 +1,9 @@
+import { costOverview } from "../lib/overview";
 import { ArrowUpRight } from "lucide-react";
 import { useState } from "react";
 import { Bars, inr } from "../components/Charts";
 import { Panel } from "../components/Shared";
-import { ledger, totals, transportTotal } from "../lib/calc";
+import { ledger, totals } from "../lib/calc";
 import { usePlanner } from "../lib/context";
 import { dateLabel, shortDate } from "../lib/format";
 import type { Trip } from "../lib/model";
@@ -19,13 +20,7 @@ export default function Comparison() {
   const comparisonRows: [string, (t: Trip) => number][] = [
     ["Total estimated cost", (t) => totals(t).estimated],
     ["Accommodation", (t) => totals(t).hotels],
-    [
-      "Flights",
-      (t) =>
-        t.transport
-          .filter((x) => x.mode.includes("flight") && x.status !== "Cancelled")
-          .reduce((s, x) => s + transportTotal(x), 0),
-    ],
+    ["Flights", (t) => costOverview(t).flights],
     [
       "Visa",
       (t) =>
@@ -37,7 +32,9 @@ export default function Comparison() {
       "Activities",
       (t) =>
         t.activities
-          .filter((x) => x.status !== "Cancelled")
+          .filter(
+            (x) => x.status !== "Cancelled" && x.includeInBudget !== false,
+          )
           .reduce((s, x) => s + x.cost, 0),
     ],
     [

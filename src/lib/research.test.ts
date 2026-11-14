@@ -333,7 +333,14 @@ describe("shared Kuala Lumpur research for Malaysia-only trips", () => {
       13476, 16347, 15588, 9360, 17436,
     ]);
     expect(t.hotels.some((h) => h.destination === "Singapore")).toBe(false);
-    expect(t.transport.map(transportTotal)).toEqual([12500, 3500, 2500, 12000]);
+    expect(
+      t.transport
+        .filter(
+          (r) => r.mode === "Domestic flight" || r.mode === "Regional flight",
+        )
+        .map(transportTotal),
+    ).toEqual([3500, 2500]);
+    expect(t.fareGroups?.[0].amount).toBe(35550);
   });
   it("adds shared candidates to older saved trips once and preserves their selections, financial history and other records", () => {
     const t = makeTrip(true);

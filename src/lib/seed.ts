@@ -1,3 +1,4 @@
+import { applyMalaysiaPlan } from "./transit";
 import type { Store, Trip } from "./model";
 import { uid } from "./model";
 import {
@@ -220,12 +221,13 @@ export function makeTrip(malaysia = false): Trip {
         ? "Verify current official requirements for your passport and dates."
         : "",
   }));
-  return applyResearchUpdate(
+  const researched = applyResearchUpdate(
     t,
     researchChanges(t)
       .filter((c) => c.state === "ready")
       .map((c) => c.key),
   );
+  return malaysia ? applyMalaysiaPlan(researched) : researched;
 }
 export function seed(): Store {
   const trips = [makeTrip(), makeTrip(true)];

@@ -1,0 +1,13 @@
+# Model Malaysia-only return airfare once and add a provisional Singapore transit plan
+
+The Malaysia-only plan used separate Mumbai–Kuala Lumpur and Penang–Mumbai estimates, which do not describe the supplied ₹35,550 Mumbai–Kuala Lumpur return quotation. This change introduces an optional ticket-level fare group linked to two visible directions. The ledger counts that fare once and keeps payments/refunds at ticket level; no leg-price allocation is fabricated. Domestic flights and hotels are preserved, and the combined Malaysia + Singapore trip remains unchanged at ₹48,201 in flights.
+
+Existing saved trips have a review path: only untouched unpaid quotes can be reconciled directly, conflicting unpaid quotes require confirmation, and booked/paid/referenced records remain protected. The old provisional Penang return remains as superseded history. Penang–Kuala Lumpur repositioning remains an explicit unresolved item rather than an invented fare or schedule.
+
+Singapore transit records the provided 08:15–18:50 UTC+8 connection without inventing date, direction, carrier, terminals, baggage transfer, protection or entry permission. An optional, initially excluded and unpriced excursion offers airport/Jewel or city sightseeing. Date/direction gate flight association, and verified details plus explicit processing/travel/buffer allowances gate usable-window calculation. No Singapore accommodation, overnight stop, or additional trip day is created. High-priority checklist reminders link official ICA/airport/airline sources without asserting visa/VFTF eligibility.
+
+Optional version-1 schema extensions preserve old backups and LocalStorage; new links are validated and remapped when duplicating trips. Transportation, comparison, overview, itinerary and currency estimate recalculation all include ticket-level fares consistently. Shared-ticket leg pricing, booking/payment fields and accidental independent duplication/deletion are guarded.
+
+Validation: unit coverage for fare grouping, both directions, protected records, existing schedules, duration/timezone, optional costs, scenario isolation, ticket payment/refund accounting and old/new backups; browser coverage for ticket editing, transit timing gates, refresh/import, trip duplication, protected legacy updates and mobile layout. Full suite results are reported with the change.
+
+Open confirmations: exact Singapore date/direction; airline and schedules; terminals; entry permission; baggage/check-in requirements; ticket protection; realistic time allowances; Penang–KUL routing and cost. No merge, deployment or publication performed.

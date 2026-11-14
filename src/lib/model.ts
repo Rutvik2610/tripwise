@@ -77,6 +77,7 @@ export interface Hotel {
   refunded: number;
 }
 export interface Transport {
+  fareGroupId?: string;
   id: string;
   source: string;
   destination: string;
@@ -104,6 +105,9 @@ export interface Transport {
   notes: string;
 }
 export interface Activity {
+  layoverId?: string;
+  includeInBudget?: boolean;
+  costPending?: boolean;
   id: string;
   name: string;
   date: string;
@@ -143,7 +147,49 @@ export interface Simulation {
   attractions: number;
   contingency: number;
 }
+export interface FareGroup {
+  id: string;
+  name: string;
+  amount: number;
+  currency: Currency;
+  rate: number;
+  status: string;
+  paid: number;
+  refunded: number;
+  reference: string;
+  notes: string;
+  passengers: number;
+  cabin: string;
+}
+export interface Layover {
+  id: string;
+  fareGroupId?: string;
+  airport: string;
+  timezone: "Asia/Singapore";
+  date: string;
+  direction: "Unknown" | "Outbound" | "Inbound";
+  arrivalTime: string;
+  departureTime: string;
+  arrivalTerminal: string;
+  departureTerminal: string;
+  entry: "Verification pending" | "Verified permitted" | "Not permitted";
+  baggage: "Unknown" | "Yes" | "No";
+  protectedConnection: "Unknown" | "Yes" | "No";
+  additionalCheckIn: "Unknown" | "Yes" | "No";
+  option: "Undecided" | "Airport" | "City";
+  disembarkation: number | null;
+  immigration: number | null;
+  travelOut: number | null;
+  travelBack: number | null;
+  formalities: number | null;
+  baggageCheckIn: number | null;
+  safetyBuffer: number | null;
+  airlineUrl: string;
+  notes: string;
+}
 export interface Trip {
+  fareGroups?: FareGroup[];
+  layovers?: Layover[];
   id: string;
   name: string;
   departure: string;

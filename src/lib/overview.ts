@@ -73,7 +73,7 @@ export function costOverview(t: Trip) {
     flights,
     bookedFlights,
     unbookedFlights: flights - bookedFlights,
-    flightCount: flightRows.filter((r) => r.active).length,
+    flightCount: flightRows.filter((r) => r.active && !r.isFareGroup).length,
     selectedHotels: hotels,
     flightsAndHotels: flights + hotels,
     other,

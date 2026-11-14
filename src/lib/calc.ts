@@ -60,6 +60,7 @@ export interface LedgerRow {
   paid: number;
   booked: boolean;
   active: boolean;
+  isFareGroup?: boolean;
 }
 export function ledger(t: Trip): LedgerRow[] {
   return [
@@ -85,6 +86,18 @@ export function ledger(t: Trip): LedgerRow[] {
       booked: h.selected && h.status === "Booked",
       active: h.selected && h.status !== "Cancelled",
     })),
+    ...(t.fareGroups ?? []).map((g) => ({
+      id: g.id,
+      label: g.name,
+      category: "International flights",
+      destination: "Mumbai ↔ Kuala Lumpur",
+      date: "",
+      total: convert(g.amount, g.rate),
+      paid: netPaid(g.paid, g.refunded),
+      booked: g.status === "Booked",
+      active: g.status !== "Cancelled",
+      isFareGroup: true,
+    })),
     ...t.transport.map((x) => ({
       id: x.id,
       label: `${x.source} → ${x.destination}`,
@@ -98,10 +111,15 @@ export function ledger(t: Trip): LedgerRow[] {
               : "Local transportation",
       destination: x.destination,
       date: x.departureDate,
-      total: transportTotal(x),
+      total: x.fareGroupId ? 0 : transportTotal(x),
       paid: netPaid(x.paid, x.refunded),
-      booked: x.status === "Booked",
-      active: x.status !== "Cancelled",
+      booked: !x.fareGroupId && x.status === "Booked",
+      active:
+        x.status !== "Cancelled" &&
+        (!x.fareGroupId ||
+          (t.fareGroups ?? []).some(
+            (g) => g.id === x.fareGroupId && g.status !== "Cancelled",
+          )),
     })),
     ...t.activities.map((a) => ({
       id: a.id,
@@ -121,7 +139,7 @@ export function ledger(t: Trip): LedgerRow[] {
       total: a.cost,
       paid: 0,
       booked: a.status === "Booked",
-      active: a.status !== "Cancelled",
+      active: a.status !== "Cancelled" && a.includeInBudget !== false,
     })),
   ];
 }
@@ -216,7 +234,8 @@ export function simulate(t: Trip) {
   };
 }
 export function travelMinutes(t: Transport) {
-  if (!t.departureTime || !t.arrivalTime || !t.arrivalDate) return null;
+  if (!t.departureDate || !t.departureTime || !t.arrivalTime || !t.arrivalDate)
+    return null;
   const offset = (place: string) =>
     /mumbai|bom|india/i.test(place) ? "+05:30" : "+08:00";
   return (

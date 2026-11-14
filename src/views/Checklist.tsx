@@ -106,7 +106,9 @@ export default function Checklist() {
                     {c.related &&
                       " · Related: " +
                         (ledger(trip).find((r) => r.id === c.related)?.label ??
-                          c.related)}
+                          (trip.layovers?.some((l) => l.id === c.related)
+                            ? "Singapore transit stop"
+                            : c.related))}
                   </p>
                   {c.notes && <p>{c.notes}</p>}
                 </div>

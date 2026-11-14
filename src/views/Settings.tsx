@@ -40,6 +40,15 @@ export default function Settings() {
       return;
     updateTrip((t) => ({
       ...t,
+      ...(t.fareGroups
+        ? {
+            fareGroups: t.fareGroups.map((g) =>
+              g.status !== "Booked" && g.paid === 0
+                ? { ...g, rate: store.rates[g.currency] }
+                : g,
+            ),
+          }
+        : {}),
       expenses: t.expenses.map((e) =>
         e.bookingStatus !== "Booked" && e.paid === 0
           ? { ...e, rate: store.rates[e.currency] }

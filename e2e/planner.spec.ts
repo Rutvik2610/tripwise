@@ -606,3 +606,271 @@ test("Malaysia-only trip receives shared Kuala Lumpur quotes safely across fresh
   ).toBeVisible();
   await fresh.close();
 });
+
+test("Malaysia return ticket counts once, optional transit costs stay independent, and copied trip references survive refresh", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page
+    .getByLabel("Active trip", { exact: true })
+    .selectOption({ label: "Malaysia only · Three islands & cities" });
+  await expect(page.getByTestId("return-ticket-total")).toHaveText("₹35,550");
+  await expect(page.getByTestId("flights-total")).toHaveText("₹41,550");
+  const baseline = Number(
+    (await page.getByTestId("total-trip-cost").innerText()).replace(
+      /[^0-9]/g,
+      "",
+    ),
+  );
+  await expect(page.getByText("10h 35m", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText(
+      "Not attached to a flight until both date and direction are confirmed.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await page.getByLabel("Optional layover cost", { exact: true }).fill("1500");
+  await expect(page.getByTestId("total-trip-cost")).toHaveText(
+    "₹" + baseline.toLocaleString("en-IN"),
+  );
+  await page
+    .getByLabel("Include optional Singapore sightseeing", { exact: true })
+    .check();
+  await expect(page.getByTestId("total-trip-cost")).toHaveText(
+    "₹" + (baseline + 1500).toLocaleString("en-IN"),
+  );
+  await page
+    .getByLabel("Include optional Singapore sightseeing", { exact: true })
+    .uncheck();
+  await expect(page.getByTestId("total-trip-cost")).toHaveText(
+    "₹" + baseline.toLocaleString("en-IN"),
+  );
+  await navigate(page, "Transportation");
+  await expect(
+    page.getByRole("heading", {
+      name: "International round-trip ticket",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(page.locator(".ticket-legs")).toContainText(
+    "Mumbai (BOM) → Kuala Lumpur (KUL)",
+  );
+  await expect(page.locator(".ticket-legs")).toContainText(
+    "Kuala Lumpur (KUL) → Mumbai (BOM)",
+  );
+  await expect(page.locator(".transit-totals")).toContainText("₹46,550");
+  await page
+    .getByRole("button", { name: "Edit ticket & payments", exact: true })
+    .click();
+  const modal = page.getByRole("dialog");
+  await modal
+    .getByLabel("Ticket name", { exact: true })
+    .fill("My flexible return ticket");
+  await modal
+    .getByLabel("Ticket booking status", { exact: true })
+    .selectOption("Booked");
+  await modal.getByLabel("Total payments (INR)", { exact: true }).fill("1000");
+  await modal.getByRole("button", { name: "Save changes" }).click();
+  await navigate(page, "Overview");
+  await expect(
+    page.locator(".mini-stats>div").filter({ hasText: "AMOUNT ACTUALLY PAID" }),
+  ).toContainText("₹1,000");
+  await expect(
+    page.locator(".mini-stats>div").filter({ hasText: "UNPAID COMMITMENTS" }),
+  ).toContainText("₹34,550");
+  await page
+    .getByLabel("Active trip", { exact: true })
+    .selectOption({ label: "Malaysia + Singapore Solo Trip 2027" });
+  await expect(page.getByTestId("flights-total")).toHaveText("₹48,201");
+  await expect(
+    page.getByRole("heading", {
+      name: "Singapore Changi Airport — Transit Stop",
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "My trips", exact: true }).click();
+  const card = page.locator(".trip-card").filter({
+    has: page.getByRole("heading", {
+      name: "Malaysia only · Three islands & cities",
+      exact: true,
+    }),
+  });
+  await card
+    .getByRole("button", {
+      name: "Duplicate Malaysia only · Three islands & cities",
+      exact: true,
+    })
+    .click();
+  await page.reload();
+  await expect(page.getByTestId("return-ticket-total")).toHaveText("₹35,550");
+  await expect(page.getByRole("alert")).toHaveCount(0);
+});
+
+test("transit remains provisional until date, direction, entry and all timing information is confirmed; mobile stays readable", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page
+    .getByLabel("Active trip", { exact: true })
+    .selectOption({ label: "Malaysia only · Three islands & cities" });
+  await navigate(page, "Itinerary");
+  await expect(
+    page.getByText("Sightseeing window provisional.", { exact: false }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", {
+      name: "Edit transit & time allowances",
+      exact: true,
+    })
+    .click();
+  const modal = page.getByRole("dialog");
+  await modal
+    .getByLabel("Confirmed layover date", { exact: true })
+    .fill("2027-01-28");
+  await modal
+    .getByLabel("Confirmed journey direction", { exact: true })
+    .selectOption("Inbound");
+  await modal
+    .getByLabel("Entry permission verification", { exact: true })
+    .selectOption("Verified permitted");
+  await modal
+    .getByLabel("Baggage checked through", { exact: true })
+    .selectOption("Yes");
+  await modal
+    .getByLabel("Protected connection verified", { exact: true })
+    .selectOption("Yes");
+  await modal
+    .getByLabel("Additional airline check-in required", { exact: true })
+    .selectOption("No");
+  await modal.getByLabel("Arrival terminal", { exact: true }).fill("T1");
+  await modal.getByLabel("Departure terminal", { exact: true }).fill("T2");
+  await modal
+    .getByLabel("Sightseeing option", { exact: true })
+    .selectOption("City");
+  for (const [label, value] of [
+    ["Disembarkation allowance (minutes)", "45"],
+    ["Immigration allowance (minutes)", "60"],
+    ["Airport to sightseeing travel (minutes)", "60"],
+    ["Return to airport travel (minutes)", "60"],
+    ["Departure security & formalities (minutes)", "45"],
+    ["Additional baggage/check-in time (minutes)", "0"],
+    ["Additional preflight safety buffer (minutes)", "120"],
+  ])
+    await modal.getByLabel(label, { exact: true }).fill(value);
+  await modal.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.locator(".usable-window")).toContainText(
+    "11:00–15:05 · 4h 5m",
+  );
+  await expect(
+    page.getByText("Associated leg: Kuala Lumpur (KUL) → Mumbai (BOM)", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  const data = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem("tripwise.v1")!),
+  );
+  const t = data.trips.find((t: { id: string }) => t.id === data.activeId);
+  expect(t.stops.map((s: { name: string }) => s.name)).not.toContain(
+    "Singapore",
+  );
+  expect(
+    t.hotels.some(
+      (h: { destination: string }) => h.destination === "Singapore",
+    ),
+  ).toBe(false);
+  expect(t.start).toBe("2027-01-18");
+  expect(t.end).toBe("2027-01-28");
+  expect(
+    t.transport.find(
+      (r: { source: string; destination: string }) =>
+        r.source === "Kuala Lumpur (KUL)" && r.destination === "Mumbai (BOM)",
+    ).departureDate,
+  ).toBe("");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForTimeout(300);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await expect(page.locator(".transit-time-grid")).toContainText("18:50");
+  await page.screenshot({
+    path: "/tmp/tripwise-malaysia-transit-mobile.png",
+    fullPage: true,
+  });
+  await page.reload();
+  await page
+    .getByRole("button", { name: "Open navigation", exact: true })
+    .click();
+  await navigate(page, "Itinerary");
+  await expect(page.locator(".usable-window")).toContainText("11:00–15:05");
+});
+
+test("legacy Malaysia flight update preserves a confirmed paid booking and offers transit details without forcing the quote", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem("tripwise.v1")!);
+    const t = s.trips[1];
+    delete t.fareGroups;
+    delete t.layovers;
+    t.activities = t.activities.filter(
+      (a: { layoverId?: string }) => !a.layoverId,
+    );
+    t.checklist = t.checklist.filter(
+      (c: { id: string }) => !c.id.includes(":sin-check-"),
+    );
+    t.transport = t.transport.filter(
+      (r: { source: string; destination: string }) =>
+        !(
+          r.source === "Kuala Lumpur (KUL)" && r.destination === "Mumbai (BOM)"
+        ),
+    );
+    const out = t.transport[0];
+    delete out.fareGroupId;
+    out.fare = 12500;
+    out.paid = 500;
+    out.status = "Booked";
+    out.reference = "Personal confirmed booking";
+    t.transport[t.transport.length - 1].status = "Researching";
+    s.activeId = t.id;
+    localStorage.setItem("tripwise.v1", JSON.stringify(s));
+  });
+  await page.reload();
+  const before = await page.evaluate(
+    () => JSON.parse(localStorage.getItem("tripwise.v1")!).trips,
+  );
+  await page
+    .getByRole("button", { name: "Review Malaysia flight update", exact: true })
+    .click();
+  await expect(
+    page.getByText(
+      "Paid, booked, cancelled, referenced or already-linked records are protected.",
+      { exact: false },
+    ),
+  ).toBeVisible();
+  await page
+    .getByRole("button", {
+      name: "Add provisional transit details only",
+      exact: true,
+    })
+    .click();
+  const after = await page.evaluate(
+    () => JSON.parse(localStorage.getItem("tripwise.v1")!).trips,
+  );
+  expect(after[0]).toEqual(before[0]);
+  expect(after[1].transport).toEqual(before[1].transport);
+  expect(after[1].hotels).toEqual(before[1].hotels);
+  expect(after[1].fareGroups).toBeUndefined();
+  expect(after[1].layovers).toHaveLength(1);
+  await expect(page.getByTestId("return-ticket-total")).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", {
+      name: "Singapore Changi Airport — Transit Stop",
+      exact: true,
+    }),
+  ).toBeVisible();
+});
