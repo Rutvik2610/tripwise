@@ -55,6 +55,7 @@ export interface Hotel {
   rate: number;
   nightly: number | null;
   taxes: number;
+  propertyTaxBasis?: "Per night" | "Whole stay";
   tourismTax: number;
   heritageTax: number;
   propertyFees: number;

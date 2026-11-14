@@ -5,6 +5,7 @@ import {
   daysBetween,
   expenseTotal,
   hotelTotal,
+  hotelBreakdown,
   netPaid,
   paymentState,
   savings,
@@ -55,6 +56,8 @@ describe("currency and calendar calculations", () => {
 describe("explicit hotel taxes", () => {
   const hotel = {
     ...blankHotel(),
+    taxMode: "Included",
+    propertyTaxBasis: "Whole stay" as const,
     nightly: 100,
     currency: "MYR" as const,
     rate: 19,
@@ -67,6 +70,38 @@ describe("explicit hotel taxes", () => {
     expect(hotelTotal(hotel)).toBe(320 * 19));
   it("adds separate taxes and property fees once per stay", () =>
     expect(hotelTotal({ ...hotel, taxMode: "Separate" })).toBe(350 * 19));
+  it("multiplies in-person tourism and heritage charges across three nights", () => {
+    const h = {
+      ...hotel,
+      taxMode: "Separate",
+      propertyTaxBasis: "Per night" as const,
+    };
+    expect(hotelBreakdown(h)).toMatchObject({
+      nights: 3,
+      room: 5700,
+      generalTax: 570,
+      tourismTax: 684,
+      heritageTax: 171,
+      propertyFees: 95,
+      atProperty: 950,
+      total: 7220,
+    });
+    expect(hotelTotal(h)).toBe(7220);
+  });
+  it("preserves old whole-stay amounts when the tax basis is missing", () => {
+    const { propertyTaxBasis: _basis, ...legacy } = hotel;
+    void _basis;
+    expect(hotelTotal(legacy)).toBe(6080);
+  });
+  it("uses general tax only when separate, without double counting included tax", () => {
+    expect(
+      hotelTotal({ ...hotel, taxes: 100, taxMode: "Separate" })! -
+        hotelTotal({ ...hotel, taxes: 0, taxMode: "Separate" })!,
+    ).toBe(1900);
+    expect(hotelTotal({ ...hotel, taxes: 100, taxMode: "Included" })).toBe(
+      hotelTotal({ ...hotel, taxes: 0, taxMode: "Included" }),
+    );
+  });
   it("keeps unknown prices distinct from free stays", () => {
     expect(hotelTotal({ ...hotel, nightly: null })).toBeNull();
     expect(hotelTotal({ ...blankHotel(), nightly: 0 })).toBe(0);

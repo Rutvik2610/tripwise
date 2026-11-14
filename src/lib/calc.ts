@@ -11,17 +11,34 @@ export const convert = (amount: number, rate: number) =>
   Math.round(amount * rate * 100) / 100;
 export const netPaid = (paid: number, refunded: number) =>
   Math.max(0, paid - refunded);
-export const hotelTotal = (h: Hotel) =>
-  h.nightly === null
-    ? null
-    : convert(
-        h.nightly * daysBetween(h.checkIn, h.checkOut) +
-          (h.taxMode === "Separate" ? h.taxes : 0) +
-          h.tourismTax +
-          h.heritageTax +
-          h.propertyFees,
-        h.rate,
-      );
+// Missing basis denotes legacy whole-stay amounts. Payment location never adds
+// an independent expense: property charges are included exactly once in total.
+export function hotelBreakdown(h: Hotel) {
+  const nights = daysBetween(h.checkIn, h.checkOut);
+  const multiplier = h.propertyTaxBasis === "Per night" ? nights : 1;
+  const room = h.nightly === null ? null : convert(h.nightly * nights, h.rate);
+  const generalTax = convert(h.taxMode === "Separate" ? h.taxes : 0, h.rate);
+  const tourismTax = convert(h.tourismTax * multiplier, h.rate);
+  const heritageTax = convert(h.heritageTax * multiplier, h.rate);
+  const propertyFees = convert(h.propertyFees, h.rate);
+  const atProperty = convert(tourismTax + heritageTax + propertyFees, 1);
+  const bookingSubtotal = room === null ? null : convert(room + generalTax, 1);
+  return {
+    nights,
+    room,
+    generalTax,
+    tourismTax,
+    heritageTax,
+    propertyFees,
+    atProperty,
+    bookingSubtotal,
+    total:
+      bookingSubtotal === null
+        ? null
+        : convert(bookingSubtotal + atProperty, 1),
+  };
+}
+export const hotelTotal = (h: Hotel) => hotelBreakdown(h).total;
 export const transportTotal = (t: Transport) =>
   convert(t.fare + t.taxes + t.baggage + t.seat, t.rate);
 export const expenseTotal = (e: Expense) => convert(e.amount, e.rate);

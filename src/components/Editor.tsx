@@ -1,3 +1,5 @@
+import { hotelBreakdown } from "../lib/calc";
+import type { Hotel } from "../lib/model";
 import type { Currency, Store } from "../lib/model";
 import { errorMessage } from "../lib/storage";
 import { X } from "lucide-react";
@@ -96,10 +98,18 @@ export const fields: Record<string, Field[]> = {
     }),
     select("taxMode", "Displayed price tax model", ["Included", "Separate"]),
     f("taxes", "General taxes & fees (whole stay)", "number", {
-      hint: "Added only when tax model is Separate.",
+      hint: "Separate adds this amount once per stay. Included means it is already in the nightly price; switch to Separate to add an extra tax.",
     }),
-    f("tourismTax", "Separate tourism tax (whole stay)", "number"),
-    f("heritageTax", "Separate heritage tax (whole stay)", "number"),
+    select("propertyTaxBasis", "Tourism & heritage tax basis", [
+      "Whole stay",
+      "Per night",
+    ]),
+    f("tourismTax", "Tourism tax (paid at hotel)", "number", {
+      hint: "Enter the total for all nights in the original currency. Whole stay adds it once.",
+    }),
+    f("heritageTax", "Heritage tax (paid at hotel)", "number", {
+      hint: "Enter the total for all nights in the original currency. Use Per night only for a nightly quote.",
+    }),
     f("propertyFees", "Other fees at property (whole stay)", "number", {
       hint: "Only amounts not already included above.",
     }),
@@ -230,7 +240,14 @@ export function Editor({
       previous?.focus();
     };
   }, [onClose]);
-  const [value, setValue] = useState<Record<string, unknown>>({ ...initial });
+  const [value, setValue] = useState<Record<string, unknown>>({
+    ...initial,
+    ...(kind === "hotels"
+      ? {
+          propertyTaxBasis: (initial as Hotel).propertyTaxBasis ?? "Whole stay",
+        }
+      : {}),
+  });
   const [error, setError] = useState("");
   return (
     <div
@@ -322,7 +339,10 @@ export function Editor({
                         autoFocus={field === fields[kind][0]}
                         type={field.type ?? "text"}
                         disabled={
-                          field.key === "rate" && value.currency === "INR"
+                          (field.key === "rate" && value.currency === "INR") ||
+                          (kind === "hotels" &&
+                            field.key === "taxes" &&
+                            value.taxMode === "Included")
                         }
                         min={field.type === "number" ? 0 : undefined}
                         max={field.max}
@@ -348,6 +368,9 @@ export function Editor({
               </label>
             ))}
           </div>
+          {kind === "hotels" && (
+            <HotelTaxPreview hotel={value as unknown as Hotel} />
+          )}
           {error && (
             <div role="alert" className="error">
               {error}
@@ -368,5 +391,75 @@ export function Editor({
         </form>
       </section>
     </div>
+  );
+}
+
+function HotelTaxPreview({ hotel }: { hotel: Hotel }) {
+  const b = hotelBreakdown(hotel);
+  const format = (n: number | null) =>
+    n === null
+      ? "Price pending"
+      : new Intl.NumberFormat("en-IN", {
+          style: "currency",
+          currency: "INR",
+          maximumFractionDigits: 2,
+        }).format(n);
+  return (
+    <section
+      className="hotel-tax-preview"
+      aria-label="Hotel cost preview"
+      aria-live="polite"
+    >
+      <h3>{b.nights} nights · Cost breakdown (INR)</h3>
+      <dl>
+        <div>
+          <dt>Room × {b.nights} nights</dt>
+          <dd>{format(b.room)}</dd>
+        </div>
+        <div>
+          <dt>
+            General tax{" "}
+            {hotel.taxMode === "Included"
+              ? "(already included)"
+              : "(added once)"}
+          </dt>
+          <dd>{format(b.generalTax)}</dd>
+        </div>
+        <div>
+          <dt>
+            Tourism tax{" "}
+            {hotel.propertyTaxBasis === "Per night"
+              ? `× ${b.nights} nights`
+              : "(whole stay)"}
+          </dt>
+          <dd>{format(b.tourismTax)}</dd>
+        </div>
+        <div>
+          <dt>
+            Heritage tax{" "}
+            {hotel.propertyTaxBasis === "Per night"
+              ? `× ${b.nights} nights`
+              : "(whole stay)"}
+          </dt>
+          <dd>{format(b.heritageTax)}</dd>
+        </div>
+        <div>
+          <dt>Other property fees (whole stay)</dt>
+          <dd>{format(b.propertyFees)}</dd>
+        </div>
+        <div>
+          <dt>Payable in person at hotel</dt>
+          <dd>{format(b.atProperty)}</dd>
+        </div>
+        <div>
+          <dt>Total stay cost, including property charges</dt>
+          <dd>{format(b.total)}</dd>
+        </div>
+      </dl>
+      <p>
+        Property charges are included in the total, not added again as a second
+        expense. Record payments when you actually pay.
+      </p>
+    </section>
   );
 }

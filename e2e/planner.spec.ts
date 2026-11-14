@@ -64,11 +64,9 @@ test("expense payments, hotel alternatives, scenario isolation, persistence and 
   );
   await page.keyboard.press("Escape");
   await navigate(page, "Hotels");
-  const malibest = page
-    .locator(".hotel-card")
-    .filter({
-      has: page.getByRole("heading", { name: "Malibest Resort", exact: true }),
-    });
+  const malibest = page.locator(".hotel-card").filter({
+    has: page.getByRole("heading", { name: "Malibest Resort", exact: true }),
+  });
   await malibest
     .getByRole("button", { name: "Select stay", exact: true })
     .click();
@@ -126,14 +124,12 @@ test("expense payments, hotel alternatives, scenario isolation, persistence and 
   ).toBeVisible();
   await expect(page.locator(".comparison-card")).toHaveCount(2);
   await navigate(page, "Checklist");
-  const passport = page
-    .locator(".checklist-full article")
-    .filter({
-      has: page.getByRole("heading", {
-        name: "Passport validity",
-        exact: true,
-      }),
-    });
+  const passport = page.locator(".checklist-full article").filter({
+    has: page.getByRole("heading", {
+      name: "Passport validity",
+      exact: true,
+    }),
+  });
   await passport
     .getByRole("button", { name: "Mark Passport validity done", exact: true })
     .click();
@@ -149,13 +145,11 @@ test("expense payments, hotel alternatives, scenario isolation, persistence and 
   expect(download.suggestedFilename()).toMatch(/tripwise-backup-.*\.json/);
   await download.saveAs("/tmp/tripwise-e2e-backup.json");
   const before = await page.evaluate(() => localStorage.getItem("tripwise.v1"));
-  await page
-    .getByLabel("Import JSON backup", { exact: true })
-    .setInputFiles({
-      name: "bad.json",
-      mimeType: "application/json",
-      buffer: Buffer.from('{"version":999}'),
-    });
+  await page.getByLabel("Import JSON backup", { exact: true }).setInputFiles({
+    name: "bad.json",
+    mimeType: "application/json",
+    buffer: Buffer.from('{"version":999}'),
+  });
   await expect(page.getByRole("status")).toContainText("Import failed");
   expect(await page.evaluate(() => localStorage.getItem("tripwise.v1"))).toBe(
     before,
@@ -290,11 +284,9 @@ test("future trip creation, hotel taxes, transport components, and trip lifecycl
     page.locator(".stat-card").filter({ hasText: "ACTUALLY PAID" }),
   ).toContainText("₹1,000");
   await page.getByRole("button", { name: "My trips", exact: true }).click();
-  const card = page
-    .locator(".trip-card")
-    .filter({
-      has: page.getByRole("heading", { name: "February escape", exact: true }),
-    });
+  const card = page.locator(".trip-card").filter({
+    has: page.getByRole("heading", { name: "February escape", exact: true }),
+  });
   await card.getByRole("button", { name: "Archive trip", exact: true }).click();
   await expect(card).toContainText("Archived");
   await card.getByRole("button", { name: "Restore trip", exact: true }).click();
@@ -304,18 +296,88 @@ test("future trip creation, hotel taxes, transport components, and trip lifecycl
   await expect(
     page.getByRole("heading", { name: "February escape (copy)", exact: true }),
   ).toBeVisible();
-  const copy = page
-    .locator(".trip-card")
-    .filter({
-      has: page.getByRole("heading", {
-        name: "February escape (copy)",
-        exact: true,
-      }),
-    });
+  const copy = page.locator(".trip-card").filter({
+    has: page.getByRole("heading", {
+      name: "February escape (copy)",
+      exact: true,
+    }),
+  });
   page.once("dialog", (d) => d.accept());
   await copy
     .getByRole("button", { name: "Delete February escape (copy)", exact: true })
     .click();
   await expect(copy).toHaveCount(0);
   await expect(card).toBeVisible();
+});
+
+test("three-night property taxes, included general tax, and violet dark theme", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await navigate(page, "Hotels");
+  await page.getByRole("button", { name: "Add hotel", exact: true }).click();
+  const modal = page.getByRole("dialog");
+  await modal
+    .getByLabel("Hotel name", { exact: true })
+    .fill("Three-night tax check");
+  await modal.getByLabel("Price per night", { exact: true }).fill("1000");
+  await modal.getByLabel("Check-in", { exact: true }).fill("2027-01-21");
+  await modal.getByLabel("Check-out", { exact: true }).fill("2027-01-24");
+  await modal
+    .getByLabel("General taxes & fees (whole stay)", { exact: true })
+    .fill("300");
+  await modal
+    .getByLabel("Tourism tax (paid at hotel)", { exact: true })
+    .fill("30");
+  await modal
+    .getByLabel("Heritage tax (paid at hotel)", { exact: true })
+    .fill("15");
+  await expect(
+    modal.getByLabel("Tourism & heritage tax basis", { exact: true }),
+  ).toHaveValue("Whole stay");
+  const preview = modal.getByRole("region", { name: "Hotel cost preview" });
+  await expect(preview).toContainText("3 nights");
+  await expect(preview).toContainText("₹3,345");
+  await expect(preview).toContainText("₹45");
+  await modal
+    .getByLabel("Displayed price tax model", { exact: true })
+    .selectOption("Included");
+  await expect(
+    modal.getByLabel("General taxes & fees (whole stay)", { exact: true }),
+  ).toBeDisabled();
+  await expect(preview).toContainText("₹3,045");
+  await modal
+    .getByLabel("Displayed price tax model", { exact: true })
+    .selectOption("Separate");
+  await modal.getByRole("button", { name: "Save changes" }).click();
+  const hotel = page.locator(".hotel-card").filter({
+    has: page.getByRole("heading", {
+      name: "Three-night tax check",
+      exact: true,
+    }),
+  });
+  await expect(hotel).toContainText("₹3,345");
+  await expect(hotel).toContainText("Payable in person at hotel");
+  await expect(hotel).toContainText("₹45");
+  await page.getByRole("button", { name: "Toggle theme", exact: true }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  expect(
+    await page
+      .locator("html")
+      .evaluate((e) => getComputedStyle(e).getPropertyValue("--bg").trim()),
+  ).toBe("#141625");
+  await page.screenshot({
+    path: "/tmp/tripwise-violet-hotels.png",
+    fullPage: true,
+  });
+  await page.reload();
+  await navigate(page, "Hotels");
+  await expect(
+    page.locator(".hotel-card").filter({
+      has: page.getByRole("heading", {
+        name: "Three-night tax check",
+        exact: true,
+      }),
+    }),
+  ).toContainText("₹3,345");
 });

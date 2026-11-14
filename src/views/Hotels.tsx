@@ -13,6 +13,7 @@ import {
   convert,
   daysBetween,
   hotelTotal,
+  hotelBreakdown,
   paymentState,
   selectHotel,
   stayKey,
@@ -94,6 +95,7 @@ export default function Hotels() {
             <div className="hotel-grid">
               {options.map((h) => {
                 const cost = hotelTotal(h);
+                const breakdown = hotelBreakdown(h);
                 return (
                   <article
                     key={h.id}
@@ -131,10 +133,14 @@ export default function Hotels() {
                     </div>
                     <div className="hotel-facts">
                       <div>
-                        <span>True booking total</span>
+                        <span>Total stay, incl. property charges</span>
                         <strong>
                           {cost === null ? "Unknown" : money(cost)}
                         </strong>
+                      </div>
+                      <div>
+                        <span>Payable in person at hotel</span>
+                        <strong>{money(breakdown.atProperty)}</strong>
                       </div>
                       <div>
                         <span>Review / cleanliness</span>
@@ -191,15 +197,18 @@ export default function Hotels() {
                     <details>
                       <summary>Tax breakdown & conditions</summary>
                       <p>
+                        Room: {h.nightly ?? "Pending"} {h.currency} ×{" "}
+                        {breakdown.nights} nights. General tax:{" "}
                         {h.taxMode === "Included"
-                          ? "General taxes included in nightly price."
-                          : "General taxes separate: " +
-                            h.taxes +
-                            " " +
-                            h.currency}
-                        . Tourism: {h.tourismTax}; heritage: {h.heritageTax};
-                        other property fees: {h.propertyFees} {h.currency} per
-                        stay. Do not repeat included taxes.
+                          ? "already included in nightly price (not added again)"
+                          : `${h.taxes} ${h.currency} added once per stay`}
+                        . Tourism: {h.tourismTax}; heritage: {h.heritageTax}{" "}
+                        {h.currency}{" "}
+                        {h.propertyTaxBasis === "Per night"
+                          ? `per night × ${breakdown.nights} nights`
+                          : "for the whole stay (legacy basis retained)"}
+                        . Both payable in person at the hotel. Other property
+                        fees: {h.propertyFees} {h.currency} per stay.
                       </p>
                       <p>{h.notes}</p>
                       {h.cancellationDeadline && (

@@ -43,6 +43,7 @@ const hotel = z.object({
   rate: num.positive(),
   nightly: num.nullable(),
   taxes: num,
+  propertyTaxBasis: z.enum(["Per night", "Whole stay"]).default("Whole stay"),
   tourismTax: num,
   heritageTax: num,
   propertyFees: num,

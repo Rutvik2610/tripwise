@@ -14,14 +14,14 @@ import {
   YAxis,
 } from "recharts";
 export const palette = [
-  "#25877c",
-  "#e4ac62",
-  "#8ca4c4",
-  "#cc8d7c",
-  "#79b8a1",
-  "#b0a4c5",
-  "#aac8cc",
-  "#d4c793",
+  "var(--chart-1, #25877c)",
+  "var(--chart-2, #e4ac62)",
+  "var(--chart-3, #8ca4c4)",
+  "var(--chart-4, #cc8d7c)",
+  "var(--chart-5, #79b8a1)",
+  "var(--chart-6, #b0a4c5)",
+  "var(--chart-7, #aac8cc)",
+  "var(--chart-8, #d4c793)",
 ];
 export const inr = (n: number) => "₹" + Math.round(n).toLocaleString("en-IN");
 export function Donut({
@@ -94,7 +94,7 @@ export function Bars({
           name={label}
           isAnimationActive={false}
           dataKey="estimated"
-          fill="#298a7d"
+          fill="var(--chart-primary, #298a7d)"
           radius={[5, 5, 0, 0]}
           maxBarSize={42}
         />
@@ -103,7 +103,7 @@ export function Bars({
             name="Paid"
             isAnimationActive={false}
             dataKey="paid"
-            fill="#e3b16d"
+            fill="var(--chart-secondary, #e3b16d)"
             radius={[5, 5, 0, 0]}
             maxBarSize={42}
           />
@@ -125,8 +125,16 @@ export function TimelineChart({
       <AreaChart data={data}>
         <defs>
           <linearGradient id="area" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#298a7d" stopOpacity={0.25} />
-            <stop offset="100%" stopColor="#298a7d" stopOpacity={0} />
+            <stop
+              offset="0%"
+              stopColor="var(--chart-primary, #298a7d)"
+              stopOpacity={0.25}
+            />
+            <stop
+              offset="100%"
+              stopColor="var(--chart-primary, #298a7d)"
+              stopOpacity={0}
+            />
           </linearGradient>
         </defs>
         <CartesianGrid strokeDasharray="3 4" vertical={false} />
@@ -142,7 +150,7 @@ export function TimelineChart({
           isAnimationActive={false}
           dataKey="estimated"
           name="Planned"
-          stroke="#298a7d"
+          stroke="var(--chart-primary, #298a7d)"
           fill="url(#area)"
           strokeWidth={2}
         />
