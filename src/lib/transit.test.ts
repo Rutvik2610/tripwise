@@ -1,5 +1,5 @@
+import { migrateStore } from "./januaryShift";
 import { blankTransport } from "./factories";
-import { correctMalaysiaStore } from "./malaysiaCorrection";
 import { describe, it, expect } from "vitest";
 import { makeTrip, seed } from "./seed";
 import {
@@ -294,7 +294,7 @@ describe("version-1 backup extension compatibility", () => {
     const s = seed();
     expect(validate(JSON.parse(JSON.stringify(s)))).toEqual(s);
   });
-  it("accepts old backups and corrects only Malaysia planning data at the load boundary", () => {
+  it("accepts old backups and applies the date-only migration at the load boundary", () => {
     const s = seed();
     s.trips[1] = legacyMalaysia();
     expect(validate(JSON.parse(JSON.stringify(s)))).toEqual(s);
@@ -305,7 +305,7 @@ describe("version-1 backup extension compatibility", () => {
       value: { getItem: (key: string) => fake.get(key) ?? null },
     });
     try {
-      expect(load().data).toEqual(validate(correctMalaysiaStore(s)));
+      expect(load().data).toEqual(validate(migrateStore(s)));
       expect(JSON.parse(fake.get(storageKey)!)).toEqual(s);
     } finally {
       Object.defineProperty(globalThis, "localStorage", {

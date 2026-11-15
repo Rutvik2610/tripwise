@@ -1,3 +1,4 @@
+import { januaryDate } from "./januaryDates";
 import { addAirportHotel } from "./airportHotel";
 import type { Expense, Hotel, Store, Transport, Trip } from "./model";
 import { blankExpense, blankTransport } from "./factories";
@@ -316,10 +317,10 @@ export function malaysiaCorrectionWarnings(t: Trip) {
     if (
       matches.length === 1 &&
       matches[0].departureDate &&
-      matches[0].departureDate !== q.date
+      matches[0].departureDate !== januaryDate(t, q.date)
     )
       messages.push(
-        `${q.from} → ${q.to} retains its existing ${matches[0].departureDate} date; the proposed route uses ${q.date}. Check the stay connections.`,
+        `${q.from} → ${q.to} retains its existing ${matches[0].departureDate} date; the proposed route uses ${januaryDate(t, q.date)}. Check the stay connections.`,
       );
     if (matches.length > 1)
       messages.push(
@@ -347,12 +348,12 @@ export function malaysiaCorrectionWarnings(t: Trip) {
     t.hotels.some(
       (h) =>
         text(h.destination) === "penang" &&
-        h.checkOut > "2027-01-27" &&
+        h.checkOut > januaryDate(t, "2027-01-27") &&
         protectedHotel(h),
     )
   )
     messages.push(
-      "A booked or paid Penang stay extends past the proposed 27 January departure. Its reservation and financial history are unchanged; review the overlap.",
+      `A booked or paid Penang stay extends past the proposed ${t.january2027Shift === 1 ? "26" : "27"} January departure. Its reservation and financial history are unchanged; review the overlap.`,
     );
   const g = roundTripTicket(t);
   if (!g)

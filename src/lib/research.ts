@@ -1,3 +1,4 @@
+import { januaryDate } from "./januaryDates";
 import type { Hotel, Transport, Trip } from "./model";
 import { blankHotel, blankTransport } from "./factories";
 import { hotelTotal, transportTotal } from "./calc";
@@ -123,8 +124,8 @@ const normalized = (s: string) =>
     .trim();
 function isSingaporeResearchTrip(t: Trip) {
   return (
-    t.start === "2027-01-18" &&
-    t.end === "2027-01-28" &&
+    t.start === januaryDate(t, "2027-01-18") &&
+    t.end === januaryDate(t, "2027-01-28") &&
     ["Kuala Lumpur", "Langkawi", "Singapore"].every((name) =>
       t.stops.some((s) => normalized(s.name) === normalized(name)),
     ) &&
@@ -134,8 +135,8 @@ function isSingaporeResearchTrip(t: Trip) {
 export function isResearchTrip(t: Trip) {
   return (
     isSingaporeResearchTrip(t) ||
-    (t.start === "2027-01-18" &&
-      t.end === "2027-01-28" &&
+    (t.start === januaryDate(t, "2027-01-18") &&
+      t.end === januaryDate(t, "2027-01-28") &&
       ["Kuala Lumpur", "Langkawi", "Penang"].every((name) =>
         t.stops.some((s) => normalized(s.name) === normalized(name)),
       ) &&
@@ -183,9 +184,14 @@ export function researchChanges(t: Trip): ResearchChange[] {
   for (const quote of hotelQuotes.filter(
     (q) => q.destination === "Kuala Lumpur" || isSingaporeResearchTrip(t),
   )) {
-    const start =
+    const start = januaryDate(
+        t,
         quote.destination === "Singapore" ? "2027-01-24" : "2027-01-18",
-      end = quote.destination === "Singapore" ? "2027-01-28" : "2027-01-21";
+      ),
+      end = januaryDate(
+        t,
+        quote.destination === "Singapore" ? "2027-01-28" : "2027-01-21",
+      );
     const key = `${t.id}:hotel:${quote.key}`;
     const matches = t.hotels.filter(
       (h) =>
@@ -267,7 +273,14 @@ export function researchChanges(t: Trip): ResearchChange[] {
       existingId: existing?.id,
     });
   }
-  for (const quote of isSingaporeResearchTrip(t) ? flightQuotes : []) {
+  for (const originalQuote of isSingaporeResearchTrip(t) ? flightQuotes : []) {
+    const quote = {
+      ...originalQuote,
+      date:
+        t.january2027Shift === 1 && originalQuote.key === "bom-kul"
+          ? "2027-01-16"
+          : januaryDate(t, originalQuote.date),
+    };
     const key = `${t.id}:flight:${quote.key}`;
     let matches = t.transport.filter(
       (r) =>

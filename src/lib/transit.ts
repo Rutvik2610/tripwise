@@ -3,8 +3,10 @@ import { blankActivity, blankCheck, blankTransport } from "./factories";
 import { convert, ledger } from "./calc";
 const normal = (s: string) => s.toLowerCase();
 export const isMalaysiaOnly = (t: Trip) =>
-  t.start === "2027-01-18" &&
-  t.end === "2027-01-28" &&
+  ((t.start === "2027-01-18" && t.end === "2027-01-28") ||
+    (t.january2027Shift === 1 &&
+      t.start === "2027-01-17" &&
+      t.end === "2027-01-27")) &&
   ["Kuala Lumpur", "Langkawi", "Penang"].every((name) =>
     t.stops.some((s) => s.name.toLowerCase() === name.toLowerCase()),
   ) &&

@@ -1,3 +1,4 @@
+import { migrateStore } from "./januaryShift";
 import { describe, expect, it } from "vitest";
 import { addAirportHotel } from "./airportHotel";
 import { makeTrip, seed } from "./seed";
@@ -57,7 +58,7 @@ describe("Tune KLIA final-stay candidate", () => {
       },
     });
     try {
-      expect(load().data).toEqual(next);
+      expect(load().data).toEqual(validate(migrateStore(before)));
     } finally {
       Object.defineProperty(globalThis, "localStorage", {
         configurable: true,

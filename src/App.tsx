@@ -1,4 +1,4 @@
-import { correctMalaysiaStore } from "./lib/malaysiaCorrection";
+import { migrateStore } from "./lib/januaryShift";
 import type { LucideIcon } from "lucide-react";
 import {
   ArrowRight,
@@ -344,7 +344,7 @@ export default function App() {
     try {
       if (file.size > 10_000_000) throw Error("Backup exceeds 10 MB.");
       const data = validate(
-        correctMalaysiaStore(validate(JSON.parse(await file.text()))),
+        migrateStore(validate(JSON.parse(await file.text()))),
       );
       if (
         !confirm(

@@ -206,7 +206,11 @@ export function TransitPlanning({
           <Panel
             key={l.id}
             title="Singapore Changi Airport — Transit Stop"
-            sub="Transit / sightseeing only · no overnight stay"
+            sub={
+              trip.january2027Shift === 1
+                ? "Transit / sightseeing only · no overnight stay · Provisional schedule, not independently reverified"
+                : "Transit / sightseeing only · no overnight stay"
+            }
             action={
               <button
                 className="text-button"

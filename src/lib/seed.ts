@@ -1,3 +1,4 @@
+import { shiftJanuaryTrip } from "./januaryShift";
 import { addAirportHotel } from "./airportHotel";
 import { correctMalaysiaTrip } from "./malaysiaCorrection";
 import { applyMalaysiaPlan } from "./transit";
@@ -234,7 +235,7 @@ export function makeTrip(malaysia = false): Trip {
     : researched;
 }
 export function seed(): Store {
-  const trips = [makeTrip(), makeTrip(true)];
+  const trips = [makeTrip(), makeTrip(true)].map(shiftJanuaryTrip);
   return {
     version: 1,
     trips,

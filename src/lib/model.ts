@@ -193,6 +193,7 @@ export interface Layover {
   notes: string;
 }
 export interface Trip {
+  january2027Shift?: 1;
   malaysiaPlanRevision?: 2;
   fareGroups?: FareGroup[];
   layovers?: Layover[];

@@ -1,4 +1,4 @@
-import { correctMalaysiaStore } from "./malaysiaCorrection";
+import { migrateStore } from "./januaryShift";
 import { z } from "zod";
 import type { Store } from "./model";
 import {
@@ -199,6 +199,7 @@ const layover = z.object({
   notes: str,
 });
 const trip = z.object({
+  january2027Shift: z.literal(1).optional(),
   malaysiaPlanRevision: z.literal(2).optional(),
   fareGroups: z.array(fareGroup).max(1000).optional(),
   layovers: z.array(layover).max(1000).optional(),
@@ -343,9 +344,7 @@ export function load(): { data: Store | null; error: string } {
   try {
     const raw = localStorage.getItem(storageKey);
     return {
-      data: raw
-        ? validate(correctMalaysiaStore(validate(JSON.parse(raw))))
-        : null,
+      data: raw ? validate(migrateStore(validate(JSON.parse(raw)))) : null,
       error: "",
     };
   } catch {

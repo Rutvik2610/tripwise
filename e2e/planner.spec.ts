@@ -321,8 +321,8 @@ test("three-night property taxes, included general tax, and violet dark theme", 
     .getByLabel("Hotel name", { exact: true })
     .fill("Three-night tax check");
   await modal.getByLabel("Price per night", { exact: true }).fill("1000");
-  await modal.getByLabel("Check-in", { exact: true }).fill("2027-01-21");
-  await modal.getByLabel("Check-out", { exact: true }).fill("2027-01-24");
+  await modal.getByLabel("Check-in", { exact: true }).fill("2027-01-20");
+  await modal.getByLabel("Check-out", { exact: true }).fill("2027-01-23");
   await modal
     .getByLabel("General taxes & fees (whole stay)", { exact: true })
     .fill("300");
@@ -628,10 +628,9 @@ test("Malaysia return ticket counts once in Transportation, transit costs use Ex
   await expect(page.getByText("10h 35m", { exact: true })).toBeVisible();
   await page.locator(".transit-confirmations>summary").click();
   await expect(
-    page.getByText(
-      "Not attached to a flight until both date and direction are confirmed.",
-      { exact: true },
-    ),
+    page.getByText("Associated leg: Kuala Lumpur (KUL) → Mumbai (BOM)", {
+      exact: true,
+    }),
   ).toBeVisible();
   await page
     .getByRole("button", { name: "Add planning expense", exact: true })
@@ -726,7 +725,7 @@ test("Malaysia return ticket counts once in Transportation, transit costs use Ex
   await expect(page.getByTestId("return-ticket-total")).toHaveText("₹35,550");
 });
 
-test("one conditional city schedule replaces the excursion panel; connection dates stay pending until explicitly entered", async ({
+test("one conditional city schedule preserves the planned inbound connection and entry verification", async ({
   page,
 }) => {
   await page.goto("/");
@@ -752,8 +751,8 @@ test("one conditional city schedule replaces the excursion panel; connection dat
   const initial = await page.evaluate(
     () => JSON.parse(localStorage.getItem("tripwise.v1")!).trips[1].layovers[0],
   );
-  expect(initial.date).toBe("");
-  expect(initial.direction).toBe("Unknown");
+  expect(initial.date).toBe("2027-01-27");
+  expect(initial.direction).toBe("Inbound");
   await page.locator(".suggested-transit>summary").click();
   await expect(page.locator(".suggested-transit")).toContainText(
     "By approximately 15:30",
@@ -770,7 +769,7 @@ test("one conditional city schedule replaces the excursion panel; connection dat
   let modal = page.getByRole("dialog");
   await modal
     .getByLabel("Confirmed layover date", { exact: true })
-    .fill("2027-01-28");
+    .fill("2027-01-27");
   await modal
     .getByLabel("Confirmed journey direction", { exact: true })
     .selectOption("Inbound");
@@ -813,8 +812,8 @@ test("one conditional city schedule replaces the excursion panel; connection dat
       (h: { destination: string }) => h.destination === "Singapore",
     ),
   ).toBe(false);
-  expect(t.start).toBe("2027-01-18");
-  expect(t.end).toBe("2027-01-28");
+  expect(t.start).toBe("2027-01-17");
+  expect(t.end).toBe("2027-01-27");
   await page
     .getByRole("button", { name: "Edit transit details", exact: true })
     .click();
@@ -968,7 +967,7 @@ test("both scenarios use one Transportation Summary and Malaysia has separate fi
   ).toBeVisible();
   const finalStay = page
     .getByRole("row")
-    .filter({ hasText: "27 Jan – 28 Jan" });
+    .filter({ hasText: "26 Jan – 27 Jan" });
   await expect(finalStay).toContainText("Selection pending");
   await finalStay
     .getByRole("button", { name: "Compare alternatives", exact: true })
@@ -1042,118 +1041,93 @@ test("both scenarios use one Transportation Summary and Malaysia has separate fi
   ).toEqual(combinedBefore);
 });
 
-test("an existing saved Malaysia plan corrects automatically and retains an old excursion estimate in Expenses once", async ({
+test("both saved January scenarios shift once, preserving costs, payments and user notes", async ({
   page,
 }) => {
   await page.goto("/");
-  await page
-    .getByLabel("Active trip", { exact: true })
-    .selectOption({ label: "Malaysia only · Three islands & cities" });
-  const baseline = Number(
-    (await page.getByTestId("total-trip-cost").innerText()).replace(
-      /[^0-9]/g,
-      "",
-    ),
-  );
-  await page.evaluate(() => {
+  const old = await page.evaluate(() => {
     const s = JSON.parse(localStorage.getItem("tripwise.v1")!);
-    const t = s.trips[1];
-    delete t.malaysiaPlanRevision;
-    t.stops = t.stops.filter(
-      (stop: { name: string; start: string }) =>
-        !(stop.name === "Kuala Lumpur" && stop.start === "2027-01-27"),
-    );
-    t.stops.find((stop: { name: string }) => stop.name === "Penang").end =
-      "2027-01-28";
-    t.hotels.find(
-      (h: { destination: string }) => h.destination === "Penang",
-    ).checkOut = "2027-01-28";
-    const kul = t.transport.find(
-      (r: { source: string; destination: string }) =>
-        r.source === "Kuala Lumpur (KUL)" && r.destination === "Langkawi (LGK)",
-    );
-    kul.fare = 3500;
-    t.transport.find(
-      (r: { source: string; destination: string }) =>
-        r.source === "Langkawi (LGK)" && r.destination === "Penang (PEN)",
-    ).fare = 2500;
-    t.transport = t.transport.filter(
-      (r: { source: string; destination: string }) =>
-        !(
-          r.source === "Penang (PEN)" && r.destination === "Kuala Lumpur (KUL)"
-        ),
-    );
-    t.transport.push({
-      ...kul,
-      id: "old-penang-mumbai",
-      source: "Penang (PEN)",
-      destination: "Mumbai (BOM)",
-      departureDate: "2027-01-28",
-      mode: "International flight",
-      fare: 12000,
-      status: "Researching",
-      notes: "Old provisional return estimate",
+    const forward = (value: unknown): unknown => {
+      if (Array.isArray(value)) return value.map(forward);
+      if (value && typeof value === "object")
+        return Object.fromEntries(
+          Object.entries(value).map(([k, v]) => [k, forward(v)]),
+        );
+      if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        const d = new Date(value + "T00:00:00Z");
+        d.setUTCDate(d.getUTCDate() + 1);
+        return d.toISOString().slice(0, 10);
+      }
+      return value;
+    };
+    s.trips = s.trips.map((t: Record<string, unknown>) => {
+      const old = forward(t) as Record<string, unknown>;
+      delete old.january2027Shift;
+      return old;
     });
-    const a = t.activities.find((a: { layoverId?: string }) => a.layoverId);
-    delete a.retiredTransit;
-    a.cost = 1600;
-    a.costPending = false;
-    a.includeInBudget = true;
-    a.notes = "Preserve my custom vegetarian lunch and MRT notes";
-    t.expenses[0].paid = 400;
-    t.expenses[0].paymentStatus = "Partially Paid";
-    t.expenses[0].bookingStatus = "Booked";
+    s.trips[1].expenses[0].paid = 400;
+    s.trips[1].expenses[0].paymentStatus = "Partially Paid";
+    s.trips[1].expenses[0].notes =
+      "Preserve my vegetarian meals and payment history";
+    s.trips[1].hotels.find(
+      (h: { name: string }) => h.name === "Tune Hotel KLIA-KLIA2",
+    ).selected = true;
     localStorage.setItem("tripwise.v1", JSON.stringify(s));
+    return s;
   });
-  const before = await page.evaluate(() =>
-    JSON.parse(localStorage.getItem("tripwise.v1")!),
-  );
   await page.reload();
-  await expect(page.getByTestId("flights-total")).toHaveText("₹44,847");
-  await expect(page.getByTestId("total-trip-cost")).toHaveText(
-    "₹" + (baseline + 1600).toLocaleString("en-IN"),
-  );
   const after = await page.evaluate(() =>
     JSON.parse(localStorage.getItem("tripwise.v1")!),
   );
-  expect(after.trips[0]).toEqual(before.trips[0]);
-  expect(after.trips[1].expenses[0]).toEqual(before.trips[1].expenses[0]);
-  expect(
-    after.trips[1].transport.some(
-      (r: { id: string }) => r.id === "old-penang-mumbai",
-    ),
-  ).toBe(false);
-  expect(after.trips[1].malaysiaPlanRevision).toBe(2);
-  expect(
-    after.trips[1].expenses.filter(
-      (e: { sourceActivityId?: string }) => e.sourceActivityId,
-    ),
-  ).toHaveLength(1);
-  expect(
-    after.trips[1].activities.find((a: { layoverId?: string }) => a.layoverId)
-      .notes,
-  ).toBe("Preserve my custom vegetarian lunch and MRT notes");
-  await navigate(page, "Expenses");
-  const row = page
-    .getByRole("row")
-    .filter({ hasText: "Singapore Layover Sightseeing — 10h 35m Connection" });
-  await expect(row).toContainText("₹1,600");
-  await row.locator("summary").click();
-  await expect(row).toContainText(
-    "Preserve my custom vegetarian lunch and MRT notes",
-  );
-  await page.reload();
-  const repeated = await page.evaluate(() =>
+  for (let i = 0; i < 2; i++) {
+    expect(after.trips[i]).toMatchObject({
+      start: "2027-01-17",
+      end: "2027-01-27",
+      january2027Shift: 1,
+    });
+    expect(after.trips[i].transport[0]).toMatchObject({
+      departureDate: "2027-01-16",
+      arrivalDate: "2027-01-17",
+    });
+    expect(after.trips[i].hotels.map((h: { id: string }) => h.id)).toEqual(
+      old.trips[i].hotels.map((h: { id: string }) => h.id),
+    );
+    expect(after.trips[i].activities.map((a: { id: string }) => a.id)).toEqual(
+      old.trips[i].activities.map((a: { id: string }) => a.id),
+    );
+    expect(
+      after.trips[i].transport.map((r: { fare: number }) => r.fare),
+    ).toEqual(old.trips[i].transport.map((r: { fare: number }) => r.fare));
+  }
+  expect(after.trips[1].expenses[0]).toMatchObject({
+    paid: 400,
+    paymentStatus: "Partially Paid",
+    notes: "Preserve my vegetarian meals and payment history",
+  });
+  expect(after.trips[1].layovers[0]).toMatchObject({
+    date: "2027-01-27",
+    direction: "Inbound",
+    arrivalTime: "08:15",
+    departureTime: "18:50",
+  });
+  await page
+    .getByLabel("Active trip", { exact: true })
+    .selectOption({ label: "Malaysia only · Three islands & cities" });
+  await expect(page.getByTestId("flights-total")).toHaveText("₹44,847");
+  await navigate(page, "Hotels");
+  await page.getByRole("button", { name: "Kuala Lumpur", exact: true }).click();
+  const tune = page
+    .locator(".hotel-card")
+    .filter({ hasText: "Tune Hotel KLIA-KLIA2" });
+  await expect(tune).toContainText("Selected stay");
+  await expect(tune).toContainText("₹7,250");
+  const saved = await page.evaluate(() =>
     JSON.parse(localStorage.getItem("tripwise.v1")!),
   );
-  expect(repeated).toEqual(after);
-  await navigate(page, "Itinerary");
-  await expect(
-    page.getByRole("heading", {
-      name: "Singapore Layover Sightseeing — 10h 35m Connection",
-      exact: true,
-    }),
-  ).toHaveCount(0);
+  await page.reload();
+  expect(
+    await page.evaluate(() => JSON.parse(localStorage.getItem("tripwise.v1")!)),
+  ).toEqual(saved);
 });
 
 test("Tune KLIA candidate is scoped to final Malaysia stay and selected costs persist", async ({
@@ -1205,16 +1179,16 @@ test("Tune KLIA candidate is scoped to final Malaysia stay and selected costs pe
   });
   expect(
     tripAfter.hotels.filter(
-      (h: { checkIn: string }) => h.checkIn === "2027-01-18",
+      (h: { checkIn: string }) => h.checkIn === "2027-01-17",
     ),
   ).toEqual(
     tripBefore.hotels.filter(
-      (h: { checkIn: string }) => h.checkIn === "2027-01-18",
+      (h: { checkIn: string }) => h.checkIn === "2027-01-17",
     ),
   );
   expect(after.trips[0]).toEqual(before.trips[0]);
   await navigate(page, "Overview");
-  const stay = page.getByRole("row").filter({ hasText: "27 Jan – 28 Jan" });
+  const stay = page.getByRole("row").filter({ hasText: "26 Jan – 27 Jan" });
   await expect(stay).toContainText("Tune Hotel KLIA-KLIA2");
   await expect(stay).toContainText("₹7,250");
 });

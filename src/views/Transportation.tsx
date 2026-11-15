@@ -64,6 +64,8 @@ export default function Transportation() {
       <div className="notice">
         <Info size={17} />
         <span>
+          {trip.january2027Shift === 1 &&
+            "Shifted travel dates are provisional and have not been independently reverified. "}
           Fares are illustrative. No flight schedules or protected connections
           are assumed. Enter local times; duration calculations use India
           UTC+5:30 and Malaysia / Singapore UTC+8. Other routes need manual

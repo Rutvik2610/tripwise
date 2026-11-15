@@ -1,3 +1,4 @@
+import { migrateStore } from "./januaryShift";
 import { describe, it, expect } from "vitest";
 import { makeTrip, seed } from "./seed";
 import { blankTransport, blankExpense } from "./factories";
@@ -344,14 +345,16 @@ describe("automatic saved-data correction and backups", () => {
     try {
       const result = load();
       expect(result.error).toBe("");
-      expect(result.data).toEqual(validate(correctMalaysiaStore(s)));
+      expect(result.data).toEqual(validate(migrateStore(s)));
       expect(result.data!.activeId).toBe(s.activeId);
       expect(result.data!.trips[0]).toEqual(s.trips[0]);
-      expect(result.data!.trips[1].expenses[0]).toEqual(s.trips[1].expenses[0]);
+      expect(result.data!.trips[1].expenses[0]).toEqual(
+        migrateStore(s).trips[1].expenses[0],
+      );
       expect(validate(JSON.parse(JSON.stringify(result.data)))).toEqual(
         result.data,
       );
-      expect(correctMalaysiaStore(result.data!)).toBe(result.data);
+      expect(migrateStore(result.data!)).toBe(result.data);
     } finally {
       if (prior) Object.defineProperty(globalThis, "localStorage", prior);
       else Reflect.deleteProperty(globalThis, "localStorage");
