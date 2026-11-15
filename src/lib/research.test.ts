@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { makeTrip, seed, blankHotel, blankTransport } from "./seed";
+import {
+  makeTrip,
+  templateSeed as seed,
+  blankHotel,
+  blankTransport,
+} from "./seed";
 import { applyResearchUpdate, researchChanges, hotelQuotes } from "./research";
 import { costOverview, hotelDifference } from "./overview";
 import { hotelTotal, selectHotel, totals, transportTotal } from "./calc";
@@ -57,16 +62,16 @@ describe("January research quotes", () => {
       t.hotels.find((h) => h.name.startsWith("Holiday Inn"))!.breakfast,
     ).toBe(true);
   });
-  it("updates four provisional flights to 48,201 without duplicating IDs or inventing schedule details", () => {
+  it("updates four provisional flights to 47,950 without duplicating IDs or inventing schedule details", () => {
     const old = legacyTrip();
     const ids = old.transport.map((r) => r.id);
     const next = applySafe(old);
     expect(next.transport).toHaveLength(4);
     expect(next.transport.map((r) => r.id)).toEqual(ids);
     expect(next.transport.map(transportTotal)).toEqual([
-      24125, 3567, 5197, 15312,
+      24125, 3567, 4946, 15312,
     ]);
-    expect(costOverview(next).flights).toBe(48201);
+    expect(costOverview(next).flights).toBe(47950);
     expect(
       next.transport.every(
         (r) =>
@@ -244,9 +249,9 @@ describe("clear financial overview", () => {
   it("reconciles flights, selected hotels and other expenses exactly to the ledger forecast", () => {
     const t = makeTrip(),
       s = costOverview(t);
-    expect(s.flights).toBe(48201);
+    expect(s.flights).toBe(47950);
     expect(s.selectedHotels).toBe(46334);
-    expect(s.flightsAndHotels).toBe(94535);
+    expect(s.flightsAndHotels).toBe(94284);
     expect(s.other + s.flightsAndHotels).toBe(s.estimated);
     expect(s.remaining).toBe(t.budget - totals(t).estimated);
     expect(s.stays).toHaveLength(3);
@@ -267,7 +272,7 @@ describe("clear financial overview", () => {
       selectedHotels: 0,
       pending: 3,
       complete: false,
-      flightsAndHotels: 48201,
+      flightsAndHotels: 47950,
     });
     t.hotels[0].selected = true;
     t.hotels[0].nightly = null;
@@ -304,9 +309,9 @@ describe("clear financial overview", () => {
       fare: 700,
     });
     const s = costOverview(t);
-    expect(s.flights).toBe(48201);
+    expect(s.flights).toBe(47950);
     expect(s.bookedFlights).toBe(24125);
-    expect(s.unbookedFlights).toBe(24076);
+    expect(s.unbookedFlights).toBe(23825);
     expect(s.paid).toBe(1200);
     expect(s.unpaid).toBe(23225);
     expect(s.flights + s.selectedHotels + s.other).toBe(totals(t).estimated);

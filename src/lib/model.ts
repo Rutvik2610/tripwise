@@ -81,6 +81,9 @@ export interface Hotel {
   refunded: number;
 }
 export interface Transport {
+  cabinBaggagePieces?: number | null;
+  cabinBaggageKg?: number | null;
+  checkedBaggageKg?: number | null;
   fareGroupId?: string;
   id: string;
   source: string;

@@ -125,6 +125,22 @@ export default function Transportation() {
                       ? "Duration pending"
                       : `${travelMinutes(t)} minutes`}
                   </p>
+                  {t.mode.toLowerCase().includes("flight") && (
+                    <p>
+                      Cabin / handbag:{" "}
+                      {t.cabinBaggagePieces == null
+                        ? "Pieces unverified"
+                        : `${t.cabinBaggagePieces} piece${t.cabinBaggagePieces === 1 ? "" : "s"}`}{" "}
+                      ·{" "}
+                      {t.cabinBaggageKg == null
+                        ? "Weight unverified"
+                        : `up to ${t.cabinBaggageKg} kg`}{" "}
+                      · Checked baggage:{" "}
+                      {t.checkedBaggageKg == null
+                        ? "Unverified"
+                        : `${t.checkedBaggageKg} kg`}
+                    </p>
+                  )}
                   <details>
                     <summary>Fare & booking details</summary>
                     <p>

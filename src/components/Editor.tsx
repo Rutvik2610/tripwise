@@ -213,6 +213,15 @@ export const fields: Record<string, Field[]> = {
     f("fare", "Base fare", "number"),
     f("taxes", "Taxes", "number"),
     f("baggage", "Baggage charges", "number"),
+    f("cabinBaggagePieces", "Cabin / handbag pieces", "number", {
+      nullable: true,
+    }),
+    f("cabinBaggageKg", "Cabin / handbag allowance (kg)", "number", {
+      nullable: true,
+    }),
+    f("checkedBaggageKg", "Checked baggage allowance (kg)", "number", {
+      nullable: true,
+    }),
     f("seat", "Seat selection charges", "number"),
     f("refundable", "Refundable", "checkbox"),
     select("status", "Booking status", bookingStatuses),

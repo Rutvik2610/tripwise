@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { makeTrip, seed } from "./seed";
+import { makeTrip, templateSeed as seed } from "./seed";
 import { migrateStore, shiftJanuaryTrip, shiftDateText } from "./januaryShift";
 import { previousDay } from "./januaryDates";
 import { daysBetween, hotelTotal, totals } from "./calc";

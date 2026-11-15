@@ -1,7 +1,7 @@
 import { migrateStore } from "./januaryShift";
 import { blankTransport } from "./factories";
 import { describe, it, expect } from "vitest";
-import { makeTrip, seed } from "./seed";
+import { makeTrip, templateSeed as seed } from "./seed";
 import {
   applyMalaysiaPlan,
   roundTripTicket,
@@ -165,11 +165,11 @@ describe("Malaysia-only round-trip ticket", () => {
     expect(approved.activities.filter((a) => a.layoverId)).toHaveLength(1);
     expect(applyMalaysiaPlan(approved)).toEqual(approved);
   });
-  it("does not modify the combined Malaysia + Singapore scenario or its 48,201 fares", () => {
+  it("does not modify the combined Malaysia + Singapore scenario or its 47,950 fares", () => {
     const t = makeTrip();
     const copy = structuredClone(t);
     expect(applyMalaysiaPlan(t, true)).toEqual(copy);
-    expect(costOverview(t).flights).toBe(48201);
+    expect(costOverview(t).flights).toBe(47950);
     expect(t.fareGroups).toBeUndefined();
     expect(t.layovers).toBeUndefined();
   });

@@ -74,6 +74,9 @@ const time = z.union([
   z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
 ]);
 const transport = z.object({
+  cabinBaggagePieces: num.int().max(100).nullable().optional(),
+  cabinBaggageKg: num.max(1000).nullable().optional(),
+  checkedBaggageKg: num.max(1000).nullable().optional(),
   fareGroupId: id.optional(),
   id,
   source: str.min(1),

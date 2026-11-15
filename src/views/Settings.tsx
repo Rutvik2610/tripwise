@@ -186,7 +186,7 @@ export default function Settings() {
         </Panel>
         <Panel
           title="A fresh start"
-          sub="Reset trips and settings to the provisional demo"
+          sub="Replace browser trips and settings with the latest published snapshot"
         >
           <p className="settings-note">
             This permanently replaces your local plans. Export a backup first.
@@ -203,12 +203,12 @@ export default function Settings() {
                 setRecovery("");
                 setStore(seed());
                 setSaveError("");
-                setToast("Demo restored");
+                setToast("Published data restored");
               }
             }}
           >
             <RotateCcw size={16} />
-            Reset demo data
+            Reset to published data
           </button>
         </Panel>
       </div>

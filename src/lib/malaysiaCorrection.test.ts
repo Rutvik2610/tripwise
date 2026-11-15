@@ -1,6 +1,6 @@
 import { migrateStore } from "./januaryShift";
 import { describe, it, expect } from "vitest";
-import { makeTrip, seed } from "./seed";
+import { makeTrip, templateSeed as seed } from "./seed";
 import { blankTransport, blankExpense } from "./factories";
 import {
   correctMalaysiaTrip,
@@ -231,12 +231,12 @@ describe("Malaysia-only correction revision 2", () => {
     const next = correctMalaysiaStore(s);
     expect(next.trips[0]).toBe(s.trips[0]);
     expect(next.trips[0]).toEqual(before);
-    expect(costOverview(next.trips[0]).flights).toBe(48201);
+    expect(costOverview(next.trips[0]).flights).toBe(47950);
     expect(transportationTotals(next.trips[0])).toEqual({
-      international: 44634,
+      international: 44383,
       domestic: 3567,
       local: 5000,
-      total: 53201,
+      total: 52950,
     });
   });
 });

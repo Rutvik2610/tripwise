@@ -101,7 +101,7 @@ export const flightQuotes = [
     from: "LGK",
     to: "SIN",
     date: "2027-01-24",
-    fare: 5197,
+    fare: 4946,
     oldFare: 5500,
     mode: "International flight",
   },

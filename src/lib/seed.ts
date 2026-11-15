@@ -1,3 +1,6 @@
+import publishedData from "../data/published-trip-data.json";
+import { withFlightAllowances } from "./flightAllowances";
+import { validate } from "./storage";
 import { shiftJanuaryTrip } from "./januaryShift";
 import { addAirportHotel } from "./airportHotel";
 import { correctMalaysiaTrip } from "./malaysiaCorrection";
@@ -234,7 +237,7 @@ export function makeTrip(malaysia = false): Trip {
     ? addAirportHotel(correctMalaysiaTrip(applyMalaysiaPlan(researched)))
     : researched;
 }
-export function seed(): Store {
+export function templateSeed(): Store {
   const trips = [makeTrip(), makeTrip(true)].map(shiftJanuaryTrip);
   return {
     version: 1,
@@ -243,4 +246,10 @@ export function seed(): Store {
     rates: { INR: 1, MYR: 19, SGD: 64, USD: 85 },
     theme: "light",
   };
+}
+
+// A new installation or Reset loads the published user snapshot, never mutating it.
+export function seed(): Store {
+  const store = validate(structuredClone(publishedData));
+  return { ...store, trips: store.trips.map(withFlightAllowances) };
 }

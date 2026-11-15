@@ -1,7 +1,7 @@
 import { migrateStore } from "./januaryShift";
 import { describe, expect, it } from "vitest";
 import { addAirportHotel } from "./airportHotel";
-import { makeTrip, seed } from "./seed";
+import { makeTrip, templateSeed as seed } from "./seed";
 import { correctMalaysiaStore } from "./malaysiaCorrection";
 import { hotelBreakdown, selectHotel, totals } from "./calc";
 import { load, storageKey, validate } from "./storage";

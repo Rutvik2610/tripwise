@@ -8,6 +8,16 @@ const navigate = async (
     .getByRole("button", { name, exact: true })
     .click();
 };
+test.beforeEach(async ({ page }) => {
+  await page.goto("/");
+  if ((await page.locator("html").getAttribute("data-theme")) === "dark")
+    await page
+      .getByRole("button", { name: "Toggle theme", exact: true })
+      .click();
+  await page
+    .getByLabel("Active trip", { exact: true })
+    .selectOption({ label: "Malaysia + Singapore Solo Trip 2027" });
+});
 test("expense payments, hotel alternatives, scenario isolation, persistence and backups", async ({
   page,
 }) => {
@@ -386,11 +396,13 @@ test("financial overview responds to selected hotels, sorting, and stay links", 
   page,
 }) => {
   await page.goto("/");
-  await expect(page.getByTestId("flights-total")).toHaveText("₹48,201");
-  await expect(page.getByTestId("selected-hotels-total")).toHaveText("₹46,334");
-  await expect(page.getByTestId("flights-hotels-total")).toHaveText("₹94,535");
+  await expect(page.getByTestId("flights-total")).toHaveText("₹47,950");
+  await expect(page.getByTestId("selected-hotels-total")).toHaveText("₹53,642");
+  await expect(page.getByTestId("flights-hotels-total")).toHaveText(
+    "₹1,01,592",
+  );
   await expect(page.getByTestId("other-expenses-total")).toHaveText("₹74,700");
-  await expect(page.getByTestId("total-trip-cost")).toHaveText("₹1,69,235");
+  await expect(page.getByTestId("total-trip-cost")).toHaveText("₹1,76,292");
   const kl = page.locator("tr").filter({
     has: page.getByRole("cell", { name: "Kuala Lumpur", exact: true }),
   });
@@ -424,13 +436,13 @@ test("financial overview responds to selected hotels, sorting, and stay links", 
     .getByRole("button", { name: "Select stay", exact: true })
     .click();
   await navigate(page, "Overview");
-  await expect(page.getByTestId("selected-hotels-total")).toHaveText("₹52,310");
+  await expect(page.getByTestId("selected-hotels-total")).toHaveText("₹57,758");
   await expect(page.getByTestId("flights-hotels-total")).toHaveText(
-    "₹1,00,511",
+    "₹1,05,708",
   );
-  await expect(page.getByTestId("total-trip-cost")).toHaveText("₹1,75,211");
+  await expect(page.getByTestId("total-trip-cost")).toHaveText("₹1,80,408");
   await page.reload();
-  await expect(page.getByTestId("selected-hotels-total")).toHaveText("₹52,310");
+  await expect(page.getByTestId("selected-hotels-total")).toHaveText("₹57,758");
   await navigate(page, "Hotels");
   for (const dest of ["Kuala Lumpur", "Langkawi", "Singapore"]) {
     await page.getByRole("button", { name: dest, exact: true }).click();
@@ -441,7 +453,7 @@ test("financial overview responds to selected hotels, sorting, and stay links", 
   }
   await navigate(page, "Overview");
   await expect(page.getByTestId("selected-hotels-total")).toHaveText("₹0");
-  await expect(page.getByTestId("flights-hotels-total")).toHaveText("₹48,201");
+  await expect(page.getByTestId("flights-hotels-total")).toHaveText("₹47,950");
   await expect(
     page.getByText("Partial — accommodation incomplete", { exact: true }),
   ).toBeVisible();
@@ -504,7 +516,7 @@ test("legacy data research review preserves paid and manually edited records", a
   expect(after[0].transport).toHaveLength(4);
   expect(after[0].transport[0]).toEqual(before[0].transport[0]);
   expect(after[0].transport[1].fare).toBe(3567);
-  expect(after[0].transport[2].fare).toBe(5197);
+  expect(after[0].transport[2].fare).toBe(4946);
   expect(after[0].transport[3].fare).toBe(15312);
   expect(after[0].hotels).toHaveLength(before[0].hotels.length + 6);
   expect(
@@ -699,7 +711,7 @@ test("Malaysia return ticket counts once in Transportation, transit costs use Ex
   await page
     .getByLabel("Active trip", { exact: true })
     .selectOption({ label: "Malaysia + Singapore Solo Trip 2027" });
-  await expect(page.getByTestId("flights-total")).toHaveText("₹48,201");
+  await expect(page.getByTestId("flights-total")).toHaveText("₹47,950");
   await expect(
     page.getByRole("heading", {
       name: "Singapore Changi Airport — Transit Stop",
@@ -932,10 +944,10 @@ test("both scenarios use one Transportation Summary and Malaysia has separate fi
   await expect(
     page.getByRole("heading", { name: "Transportation Summary", exact: true }),
   ).toHaveCount(1);
-  await expect(page.getByTestId("international-airfare")).toHaveText("₹44,634");
+  await expect(page.getByTestId("international-airfare")).toHaveText("₹44,383");
   await expect(page.getByTestId("domestic-airfare")).toHaveText("₹3,567");
   await expect(page.getByTestId("local-transport")).toHaveText("₹5,000");
-  await expect(page.getByTestId("transport-total")).toHaveText("₹53,201");
+  await expect(page.getByTestId("transport-total")).toHaveText("₹52,950");
   const combinedBefore = await page.evaluate(
     () => JSON.parse(localStorage.getItem("tripwise.v1")!).trips[0],
   );
@@ -964,11 +976,11 @@ test("both scenarios use one Transportation Summary and Malaysia has separate fi
   await expect(page.getByTestId("flights-total")).toHaveText("₹44,847");
   await expect(
     page.getByText("Partial — accommodation incomplete", { exact: true }),
-  ).toBeVisible();
+  ).toHaveCount(0);
   const finalStay = page
     .getByRole("row")
     .filter({ hasText: "26 Jan – 27 Jan" });
-  await expect(finalStay).toContainText("Selection pending");
+  await expect(finalStay).toContainText("Tune Hotel KLIA-KLIA2");
   await finalStay
     .getByRole("button", { name: "Compare alternatives", exact: true })
     .click();
@@ -980,7 +992,7 @@ test("both scenarios use one Transportation Summary and Malaysia has separate fi
     .filter({ hasText: "Tune Hotel KLIA-KLIA2" });
   await expect(airportHotel).toContainText("₹7,250");
   await expect(
-    airportHotel.getByRole("button", { name: "Select stay", exact: true }),
+    airportHotel.getByRole("button", { name: "Deselect", exact: true }),
   ).toBeVisible();
   await navigate(page, "Itinerary");
   await expect(
@@ -1148,6 +1160,7 @@ test("Tune KLIA candidate is scoped to final Malaysia stay and selected costs pe
   await expect(card).toHaveCount(1);
   await expect(card).toContainText("₹7,250");
   await expect(card).toContainText("Researching");
+  await card.getByRole("button", { name: "Deselect", exact: true }).click();
   const before = await page.evaluate(() =>
     JSON.parse(localStorage.getItem("tripwise.v1")!),
   );
@@ -1191,4 +1204,81 @@ test("Tune KLIA candidate is scoped to final Malaysia stay and selected costs pe
   const stay = page.getByRole("row").filter({ hasText: "26 Jan – 27 Jan" });
   await expect(stay).toContainText("Tune Hotel KLIA-KLIA2");
   await expect(stay).toContainText("₹7,250");
+});
+
+test("published backup and flight allowances survive editing, export and reset", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await navigate(page, "Transportation");
+  const outbound = page
+    .locator(".transport-card")
+    .filter({ hasText: "Mumbai (BOM)" })
+    .filter({ hasText: "Kuala Lumpur (KUL)" });
+  await expect(outbound).toContainText(
+    "1 piece · up to 7 kg · Checked baggage: 30 kg",
+  );
+  const regional = page
+    .locator(".transport-card")
+    .filter({ hasText: "Langkawi (LGK)" })
+    .filter({ hasText: "Singapore (SIN)" });
+  await expect(regional).toContainText("₹4,946");
+  await expect(regional).toContainText("Checked baggage: 25 kg");
+  await page
+    .getByLabel("Active trip", { exact: true })
+    .selectOption({ label: "Malaysia only · Three islands & cities" });
+  const leg = page
+    .locator(".transport-card")
+    .filter({ hasText: "Mumbai (BOM)" })
+    .filter({ hasText: "Kuala Lumpur (KUL)" })
+    .first();
+  await leg.getByRole("button", { name: "Edit record", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(
+    dialog.getByLabel("Checked baggage allowance (kg)", { exact: true }),
+  ).toHaveValue("30");
+  await expect(dialog.getByLabel("Base fare", { exact: true })).toBeDisabled();
+  await dialog
+    .getByLabel("Checked baggage allowance (kg)", { exact: true })
+    .fill("32");
+  await dialog.getByRole("button", { name: "Save changes" }).click();
+  await page.reload();
+  await navigate(page, "Transportation");
+  await expect(leg).toContainText("Checked baggage: 32 kg");
+  const raw = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem("tripwise.v1")!),
+  );
+  expect(raw.trips[1].transport[0]).toMatchObject({
+    checkedBaggageKg: 32,
+    cabinBaggageKg: 7,
+    cabinBaggagePieces: 1,
+    fare: 0,
+  });
+  const downloadPromise = page.waitForEvent("download");
+  await page
+    .getByRole("button", { name: "Export backup", exact: true })
+    .click();
+  expect((await downloadPromise).suggestedFilename()).toContain(
+    "tripwise-backup",
+  );
+  await page
+    .getByRole("button", { name: "Settings & backups", exact: true })
+    .click();
+  page.once("dialog", (d) => d.accept());
+  await page
+    .getByRole("button", { name: "Reset to published data", exact: true })
+    .click();
+  const reset = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem("tripwise.v1")!),
+  );
+  expect(reset.trips[1].transport[0]).toMatchObject({
+    checkedBaggageKg: 30,
+    cabinBaggageKg: 7,
+    cabinBaggagePieces: 1,
+  });
+  expect(
+    reset.trips[1].hotels.find(
+      (h: { name: string }) => h.name === "Tune Hotel KLIA-KLIA2",
+    ).selected,
+  ).toBe(true);
 });

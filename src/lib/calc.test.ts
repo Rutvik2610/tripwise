@@ -21,7 +21,7 @@ import {
   blankHotel,
   blankTransport,
   makeTrip,
-  seed,
+  templateSeed as seed,
 } from "./seed";
 import { validate } from "./storage";
 const emptyTrip = (): Trip => ({
