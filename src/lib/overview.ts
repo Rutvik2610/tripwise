@@ -1,4 +1,6 @@
 import {
+  convert,
+  rowForecast,
   daysBetween,
   hotelTotal,
   ledger,
@@ -53,8 +55,7 @@ export function costOverview(t: Trip) {
   const flightRows = ledger(t).filter((r) =>
     ["International flights", "Domestic/regional flights"].includes(r.category),
   );
-  const forecast = (r: ReturnType<typeof ledger>[number]) =>
-    r.active ? Math.max(r.total, r.paid) : r.paid;
+  const forecast = rowForecast;
   const flights = flightRows.reduce((s, r) => s + forecast(r), 0);
   const bookedFlights = flightRows
     .filter((r) => r.active && r.booked)
@@ -67,21 +68,21 @@ export function costOverview(t: Trip) {
     );
   const stays = accommodationStays(t);
   const pending = stays.filter((s) => s.pending).length;
-  const other = summary.estimated - flights - hotels;
+  const other = convert(summary.estimated - flights - hotels, 1);
   return {
     ...summary,
-    flights,
-    bookedFlights,
-    unbookedFlights: flights - bookedFlights,
+    flights: convert(flights, 1),
+    bookedFlights: convert(bookedFlights, 1),
+    unbookedFlights: convert(flights - bookedFlights, 1),
     flightCount: flightRows.filter((r) => r.active && !r.isFareGroup).length,
-    selectedHotels: hotels,
-    flightsAndHotels: flights + hotels,
+    selectedHotels: convert(hotels, 1),
+    flightsAndHotels: convert(flights + hotels, 1),
     other,
     stays,
     pending,
     selectedStays: stays.filter((s) => s.selected).length,
     complete: stays.length > 0 && pending === 0,
-    retainedHotelCosts: summary.hotels - hotels,
+    retainedHotelCosts: convert(summary.hotels - hotels, 1),
   };
 }
 export function hotelDifference(t: Trip, id: string) {

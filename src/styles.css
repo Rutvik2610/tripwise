@@ -4745,3 +4745,115 @@ input:disabled {
     font-size: 11px;
   }
 }
+
+.financial-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 0 23px 22px;
+}
+.financial-summary-grid > div {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.financial-summary-grid span {
+  font-size: 12px;
+  color: var(--muted);
+}
+.financial-summary-grid strong {
+  font-size: 23px;
+}
+.financial-summary-grid small {
+  font-size: 10px;
+  color: var(--muted);
+}
+.reconciliation-note {
+  padding: 12px 23px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.reconciliation-groups {
+  padding: 0 23px;
+}
+.reconciliation-group {
+  border-bottom: 1px solid var(--line);
+  padding: 15px 0;
+}
+.reconciliation-group > summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.reconciliation-group > summary strong {
+  margin-right: auto;
+}
+.reconciliation-total {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 20px 23px;
+}
+.allowance-summary {
+  padding: 15px 23px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.allowance-summary > summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.allowance-usage {
+  display: flex;
+  flex-direction: column;
+  margin: 12px 0;
+}
+.payment-fields {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px;
+  min-width: 0;
+}
+.payment-fields > p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.payment-entry {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+.payment-entry label {
+  min-width: 0;
+}
+.payment-entry input,
+.payment-entry select {
+  width: 100%;
+}
+.payment-entry p {
+  grid-column: 1/-1;
+  font-size: 12px;
+}
+@media (max-width: 700px) {
+  .financial-summary-grid {
+    grid-template-columns: 1fr;
+    padding: 0 16px 16px;
+  }
+  .payment-entry {
+    grid-template-columns: 1fr;
+  }
+  .reconciliation-group > summary {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 7px;
+  }
+}

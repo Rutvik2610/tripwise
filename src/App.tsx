@@ -104,7 +104,8 @@ export default function App() {
     new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: trip.homeCurrency,
-      maximumFractionDigits: 0,
+      maximumFractionDigits: 2,
+      minimumFractionDigits: 0,
     }).format(n / store.rates[trip.homeCurrency]);
   useEffect(() => {
     document.documentElement.dataset.theme = store.theme;
@@ -203,6 +204,22 @@ export default function App() {
       );
       return;
     }
+    if (
+      kind === "expenses" &&
+      trip.expenses.some((e) => e.allowanceId === id)
+    ) {
+      setToast("Unlink or reassign this allowance's items before deleting it.");
+      return;
+    }
+    if (
+      kind === "activities" &&
+      trip.expenses.some((e) => e.plannedActivityId === id)
+    ) {
+      setToast(
+        "Unlink the activity payment before deleting the planned activity.",
+      );
+      return;
+    }
     if (confirm("Delete this entry? This cannot be undone."))
       updateTrip((t) => ({ ...t, [kind]: t[kind].filter((x) => x.id !== id) }));
   };
@@ -253,6 +270,9 @@ export default function App() {
                       refunded: 0,
                       bookingStatus: "Planned",
                       paymentStatus: "Unpaid",
+                      paymentSnapshot: undefined,
+                      refundSnapshot: undefined,
+                      plannedActivityId: undefined,
                       reference: "",
                     }
                   : {}),
@@ -313,10 +333,18 @@ export default function App() {
       if (kind === "expenses")
         nextTrip = {
           ...nextTrip,
-          expenses: nextTrip.expenses.map((e) => ({
-            ...e,
-            paymentStatus: paymentState(expenseTotal(e), e.paid, e.refunded),
-          })),
+          expenses: nextTrip.expenses.map((e) =>
+            e.id === record.id
+              ? {
+                  ...e,
+                  paymentStatus: paymentState(
+                    expenseTotal(e),
+                    e.paid,
+                    e.refunded,
+                  ),
+                }
+              : e,
+          ),
         };
       if (kind === "hotels") {
         const h = record as Hotel;
@@ -687,6 +715,14 @@ export default function App() {
           <Editor
             key={JSON.stringify(editing.value)}
             rates={store.rates}
+            creating={
+              editing.kind === "expenses" &&
+              !trip.expenses.some(
+                (e) => e.id === (editing.value as { id: string }).id,
+              )
+            }
+            expenseOptions={trip.expenses}
+            activityOptions={trip.activities}
             title={editing.title}
             initial={editing.value}
             kind={editing.kind}

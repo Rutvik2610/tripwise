@@ -29,11 +29,20 @@ test("both live default scenarios use the February plan and preserve all origina
       plannedNights: 10,
       february2027Revision: 1,
     });
-    expect(data.trips[i].hotels).toEqual(oldSnapshot.trips[i].hotels);
+    expect(data.trips[i].hotels).toEqual(
+      oldSnapshot.trips[i].hotels.map((h) => {
+        const shift = (date: string) => {
+          const d = new Date(date + "T00:00:00Z");
+          d.setUTCDate(d.getUTCDate() + 7);
+          return d.toISOString().slice(0, 10);
+        };
+        return { ...h, checkIn: shift(h.checkIn), checkOut: shift(h.checkOut) };
+      }),
+    );
   }
   await expect(
     page.getByText("Accommodation dates need review.", { exact: true }),
-  ).toBeVisible();
+  ).toHaveCount(0);
   await expect(page.getByTestId("flights-total")).toHaveText("₹46,140");
   await navigate(page, "Transportation");
   await expect(page.getByTestId("known-airfare-subtotal")).toContainText(
@@ -83,7 +92,7 @@ test("both live default scenarios use the February plan and preserve all origina
   await navigate(page, "Itinerary");
   await expect(
     page.getByText("Accommodation dates need review.", { exact: true }),
-  ).toBeVisible();
+  ).toHaveCount(0);
   await expect(
     page.getByText(
       "Travel: Singapore Changi (SIN) → Kuala Lumpur Subang (SZB)",

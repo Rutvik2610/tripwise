@@ -1,3 +1,4 @@
+import { BudgetReconciliation } from "../components/BudgetReconciliation";
 import { TransitPlanning } from "../components/TransitPlanning";
 import {
   ArrowUpRight,
@@ -53,33 +54,7 @@ export default function Dashboard() {
         </div>
       </Panel>
       <StaySummary />
-      <Panel
-        title="Bookings & payments"
-        sub="Commitments are a subset of projected costs. Payments never increase the forecast twice."
-      >
-        <div className="mini-stats">
-          <div>
-            <small>CONFIRMED BOOKING COST</small>
-            <strong>{money(summary.confirmed)}</strong>
-            <span>{summary.bookings} confirmed items</span>
-          </div>
-          <div>
-            <small>AMOUNT ACTUALLY PAID</small>
-            <strong>{money(summary.paid)}</strong>
-            <span>Historical payments less refunds</span>
-          </div>
-          <div>
-            <small>UNPAID COMMITMENTS</small>
-            <strong>{money(summary.unpaid)}</strong>
-            <span>Remaining on confirmed bookings</span>
-          </div>
-          <div>
-            <small>ESTIMATED COST / DAY</small>
-            <strong>{money(summary.estimated / summary.days)}</strong>
-            <span>{summary.days} calendar days</span>
-          </div>
-        </div>
-      </Panel>
+      <BudgetReconciliation />
       <section className="hero schedule-hero">
         <img
           src={`${import.meta.env.BASE_URL}journey.svg`}

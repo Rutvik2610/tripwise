@@ -1,4 +1,4 @@
-import { migrateStore } from "./februaryFlights";
+import defaultData from "../data/default-trip-data.json";
 import publishedData from "../data/published-trip-data.json";
 import { withFlightAllowances } from "./flightAllowances";
 import { validate } from "./storage";
@@ -256,5 +256,5 @@ export function publishedSnapshotSeed(): Store {
 }
 
 export function seed(): Store {
-  return migrateStore(publishedSnapshotSeed());
+  return validate(structuredClone(defaultData));
 }

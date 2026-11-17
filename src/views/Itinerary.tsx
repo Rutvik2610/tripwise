@@ -1,3 +1,6 @@
+import { activityExpenseCategory } from "../lib/model";
+import { reservationLabel } from "../lib/finance";
+import { paymentState, expenseTotal } from "../lib/calc";
 import { AccommodationDateWarning } from "../components/FlightPlanning";
 import { activeAlternative } from "../lib/februaryFlights";
 import { StaySummary } from "../components/CostOverview";
@@ -10,7 +13,7 @@ import { Badge, Panel } from "../components/Shared";
 import { groupBy } from "../lib/calc";
 import { usePlanner } from "../lib/context";
 import { dateLabel, shortDate } from "../lib/format";
-import { blankActivity } from "../lib/seed";
+import { blankActivity, blankExpense } from "../lib/seed";
 
 export default function Itinerary() {
   const { trip, summary, money, updateTrip, startEdit, add, editActions } =
@@ -241,7 +244,7 @@ export default function Itinerary() {
                       <h4>{a.name}</h4>
                       <div className="activity-meta">
                         <Badge tone={a.status === "Booked" ? "green" : ""}>
-                          {a.status}
+                          {reservationLabel("Attractions", a.status)}
                         </Badge>
                         <span>
                           {a.costPending ? "Price pending" : money(a.cost)}
@@ -272,6 +275,48 @@ export default function Itinerary() {
                           ↓
                         </button>
                       </div>
+                      <button
+                        className="text-button"
+                        onClick={() => {
+                          const existing = trip.expenses.find(
+                            (e) => e.plannedActivityId === a.id,
+                          );
+                          startEdit(
+                            "expenses",
+                            existing ?? {
+                              ...blankExpense(),
+                              kind: "Item",
+                              plannedActivityId: a.id,
+                              description: `Payment: ${a.name}`,
+                              date: a.date,
+                              destination: a.destination,
+                              category: activityExpenseCategory(a.category),
+                              amount: a.cost,
+                              paid: a.cost,
+                              paymentStatus: "Paid",
+                              paymentSnapshot: {
+                                currency: "INR",
+                                amount: a.cost,
+                                rate: 1,
+                              },
+                            },
+                            existing
+                              ? "Edit activity payment"
+                              : "Record activity payment",
+                          );
+                        }}
+                      >
+                        {trip.expenses.some((e) => e.plannedActivityId === a.id)
+                          ? "Edit payment"
+                          : "Record payment"}
+                      </button>
+                      {trip.expenses
+                        .filter((e) => e.plannedActivityId === a.id)
+                        .map((e) => (
+                          <Badge key={e.id}>
+                            {paymentState(expenseTotal(e), e.paid, e.refunded)}
+                          </Badge>
+                        ))}
                       {editActions("activities", a)}
                     </div>
                   </article>

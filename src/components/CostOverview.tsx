@@ -15,7 +15,7 @@ export function CostOverview() {
           <span className="eyebrow">
             TRIP COST OVERVIEW · {trip.homeCurrency}
           </span>
-          <h2>Estimated Total Trip Cost</h2>
+          <h2>Total projected trip cost</h2>
           <strong data-testid="total-trip-cost">{money(s.estimated)}</strong>
           <p>
             {money(s.estimated / s.days)} per day · {s.days} days / {s.nights}{" "}
@@ -29,7 +29,9 @@ export function CostOverview() {
           </small>
         </div>
         <div className={"cost-budget " + (s.remaining < 0 ? "over" : "under")}>
-          <span>{s.remaining < 0 ? "OVER BUDGET" : "BUDGET REMAINING"}</span>
+          <span>
+            {s.remaining < 0 ? "OVER BUDGET" : "TRIP BUDGET REMAINING"}
+          </span>
           <strong data-testid="remaining-budget">
             {money(Math.abs(s.remaining))}
           </strong>
@@ -43,6 +45,25 @@ export function CostOverview() {
             Edit budget <ArrowUpRight size={14} />
           </button>
           <small>Stretch budget {money(trip.stretch)}</small>
+        </div>
+      </div>
+      <div className="financial-summary-grid">
+        <div>
+          <span>Total paid</span>
+          <strong data-testid="total-paid">{money(s.paid)}</strong>
+          <small>Actual payments, net of refunds</small>
+        </div>
+        <div>
+          <span>Remaining forecast spending</span>
+          <strong data-testid="remaining-forecast">
+            {money(s.remainingForecast)}
+          </strong>
+          <small>Projected cost minus net payments</small>
+        </div>
+        <div>
+          <span>Confirmed but unpaid</span>
+          <strong data-testid="confirmed-unpaid">{money(s.unpaid)}</strong>
+          <small>A subset of remaining forecast spending</small>
         </div>
       </div>
       <div className="cost-breakdown">
@@ -81,10 +102,10 @@ export function CostOverview() {
         <button onClick={() => go("Expenses")} className="cost-detail">
           <span>
             <Wallet size={18} />
-            Other Expenses
+            Other projected costs
           </span>
           <strong data-testid="other-expenses-total">{money(s.other)}</strong>
-          <p>Food, activities, local transport, visas & more</p>
+          <p>Expenses module + itinerary activities + retained costs</p>
           <small>
             Excludes flights and selected hotels.
             {s.retainedHotelCosts > 0

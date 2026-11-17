@@ -3,7 +3,7 @@ import { ArrowUpRight } from "lucide-react";
 import { useState } from "react";
 import { Bars, inr } from "../components/Charts";
 import { Panel } from "../components/Shared";
-import { ledger, totals } from "../lib/calc";
+import { ledger, totals, rowForecast } from "../lib/calc";
 import { usePlanner } from "../lib/context";
 import { dateLabel, shortDate } from "../lib/format";
 import type { Trip } from "../lib/model";
@@ -25,39 +25,31 @@ export default function Comparison() {
       "Visa",
       (t) =>
         ledger(t)
-          .filter((x) => x.category === "Visa" && x.active)
-          .reduce((s, x) => s + x.total, 0),
+          .filter((x) => x.category === "Visa")
+          .reduce((s, x) => s + rowForecast(x), 0),
     ],
     [
       "Activities",
       (t) =>
-        t.activities
-          .filter(
-            (x) =>
-              x.status !== "Cancelled" &&
-              x.includeInBudget !== false &&
-              !x.retiredTransit,
-          )
-          .reduce((s, x) => s + x.cost, 0),
+        ledger(t)
+          .filter((x) => x.source === "Activities")
+          .reduce((s, x) => s + rowForecast(x), 0),
     ],
     [
       "Food",
       (t) =>
         ledger(t)
-          .filter((x) => x.category === "Food" && x.active)
-          .reduce((s, x) => s + x.total, 0),
+          .filter((x) => x.category === "Food")
+          .reduce((s, x) => s + rowForecast(x), 0),
     ],
     [
       "Local transportation",
       (t) =>
         ledger(t)
-          .filter(
-            (x) =>
-              ["Local transportation", "Airport transfers"].includes(
-                x.category,
-              ) && x.active,
+          .filter((x) =>
+            ["Local transportation", "Airport transfers"].includes(x.category),
           )
-          .reduce((s, x) => s + x.total, 0),
+          .reduce((s, x) => s + rowForecast(x), 0),
     ],
     ["Daily average", (t) => totals(t).estimated / totals(t).days],
   ];

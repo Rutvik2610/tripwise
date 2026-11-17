@@ -13,7 +13,17 @@ const str = z.string().max(10000),
   date = z.union([z.literal(""), z.iso.date()]);
 const currency = z.enum(currencies),
   status = z.enum(bookingStatuses as [string, ...string[]]);
+const paymentSnapshot = z.object({
+  currency,
+  amount: num,
+  rate: num.positive(),
+});
 const expense = z.object({
+  kind: z.enum(["Item", "Allowance"]).optional(),
+  allowanceId: id.optional(),
+  plannedActivityId: id.optional(),
+  paymentSnapshot: paymentSnapshot.optional(),
+  refundSnapshot: paymentSnapshot.optional(),
   layoverId: id.optional(),
   sourceActivityId: id.optional(),
   includeInBudget: z.boolean().optional(),
@@ -294,6 +304,44 @@ export function validate(raw: unknown): Store {
     ]) {
       if (ids.has(entry.id)) throw Error("Duplicate record IDs in backup.");
       ids.add(entry.id);
+    }
+    const linkedActivities = new Set<string>();
+    for (const e of t.expenses) {
+      for (const [snapshot, amount] of [
+        [e.paymentSnapshot, e.paid],
+        [e.refundSnapshot, e.refunded],
+      ] as const) {
+        if (
+          snapshot &&
+          ((snapshot.currency === "INR" && snapshot.rate !== 1) ||
+            Math.round(snapshot.amount * snapshot.rate * 100) / 100 !== amount)
+        )
+          throw Error(
+            "Payment/refund snapshot must match its INR accounting amount.",
+          );
+      }
+      if (e.allowanceId && e.plannedActivityId)
+        throw Error(
+          "Choose either an allowance or a planned activity, not both.",
+        );
+      if (e.kind === "Allowance" && (e.allowanceId || e.plannedActivityId))
+        throw Error("An allowance cannot consume another budget record.");
+      if (e.allowanceId) {
+        const target = t.expenses.find(
+          (a) => a.id === e.allowanceId && a.kind === "Allowance",
+        );
+        if (!target || target.id === e.id || target.category !== e.category)
+          throw Error("Choose an allowance in the same category and trip.");
+      }
+      if (e.plannedActivityId) {
+        if (!t.activities.some((a) => a.id === e.plannedActivityId))
+          throw Error("Payment references a missing planned activity.");
+        if (linkedActivities.has(e.plannedActivityId))
+          throw Error(
+            "Edit the existing activity payment record instead of adding a duplicate.",
+          );
+        linkedActivities.add(e.plannedActivityId);
+      }
     }
     const decisions = new Set(
       t.transport.flatMap((r) => (r.decisionId ? [r.decisionId] : [])),

@@ -1,3 +1,4 @@
+import { expenseStatus, reservationLabel } from "../lib/finance";
 import type { LucideIcon } from "lucide-react";
 import {
   Compass,
@@ -156,7 +157,19 @@ export function ExpenseTableRows({
   money,
   groupTitle,
   actions,
+  contribution,
+  usage,
+  relatedLabel,
 }: {
+  contribution?: number;
+  usage?: {
+    target: number;
+    paid: number;
+    remaining: number;
+    overrun: number;
+    count: number;
+  };
+  relatedLabel?: string;
   e: Trip["expenses"][number];
   money: (n: number) => string;
   groupTitle: string;
@@ -174,8 +187,17 @@ export function ExpenseTableRows({
           <strong>{e.description}</strong>
           <small>
             {e.category}
+            {e.kind === "Allowance" ? " · Budget allowance" : ""}
             {e.vendor && " · " + e.vendor}
           </small>
+          {relatedLabel && <small>{relatedLabel}</small>}
+          {usage && (
+            <small>
+              Target {money(usage.target)} · Paid {money(usage.paid)} ·
+              Remaining allowance {money(usage.remaining)}
+              {usage.overrun > 0 ? ` · Over ${money(usage.overrun)}` : ""}
+            </small>
+          )}
           {(e.reference || e.notes || e.receipt || safeUrl(e.url)) && (
             <details>
               <summary>Details</summary>
@@ -205,7 +227,9 @@ export function ExpenseTableRows({
           </small>
         </td>
         <td className="number">
-          {e.costPending ? "Price pending" : money(expenseTotal(e))}
+          {e.costPending
+            ? "Price pending"
+            : money(contribution ?? expenseTotal(e))}
           {e.includeInBudget === false && <small>Not included in budget</small>}
         </td>
         <td>
@@ -216,14 +240,21 @@ export function ExpenseTableRows({
                 : ""
             }
           >
-            {paymentState(expenseTotal(e), e.paid, e.refunded)}
+            {expenseStatus(e)}
           </Badge>
           <small>{money(Math.max(0, e.paid - e.refunded))} net paid</small>
           <small>{money(e.refunded)} refunded</small>
+          {e.paymentSnapshot && (
+            <small>
+              {e.paymentSnapshot.amount.toLocaleString("en-IN")}{" "}
+              {e.paymentSnapshot.currency} × ₹{e.paymentSnapshot.rate} (saved
+              payment rate)
+            </small>
+          )}
         </td>
         <td>
           <Badge tone={e.bookingStatus === "Booked" ? "green" : ""}>
-            {e.bookingStatus}
+            {reservationLabel(e.category, e.bookingStatus)}
           </Badge>
         </td>
         <td>{actions}</td>

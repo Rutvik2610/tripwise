@@ -24,7 +24,17 @@ export const bookingStatuses = [
   "Cancelled",
 ];
 export const paymentStatuses = ["Unpaid", "Partially Paid", "Paid", "Refunded"];
+export interface PaymentSnapshot {
+  currency: Currency;
+  amount: number;
+  rate: number;
+}
 export interface Expense {
+  kind?: "Item" | "Allowance";
+  allowanceId?: string;
+  plannedActivityId?: string;
+  paymentSnapshot?: PaymentSnapshot;
+  refundSnapshot?: PaymentSnapshot;
   layoverId?: string;
   sourceActivityId?: string;
   includeInBudget?: boolean;
@@ -243,3 +253,12 @@ export interface Store {
   theme: "light" | "dark";
 }
 export const uid = () => crypto.randomUUID();
+
+export const activityExpenseCategory = (category: string) =>
+  category === "Adventure"
+    ? "Adventure activities"
+    : category === "Transportation"
+      ? "Local transportation"
+      : ["Food", "Shopping", "Miscellaneous"].includes(category)
+        ? category
+        : "Attractions";

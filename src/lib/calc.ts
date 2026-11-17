@@ -1,3 +1,4 @@
+import { activityExpenseCategory } from "./model";
 import type { Expense, Hotel, Transport, Trip } from "./model";
 export const daysBetween = (start: string, end: string) =>
   Math.max(
@@ -10,7 +11,7 @@ export const daysBetween = (start: string, end: string) =>
 export const convert = (amount: number, rate: number) =>
   Math.round(amount * rate * 100) / 100;
 export const netPaid = (paid: number, refunded: number) =>
-  Math.max(0, paid - refunded);
+  convert(Math.max(0, paid - refunded), 1);
 // Missing basis denotes legacy whole-stay amounts. Payment location never adds
 // an independent expense: property charges are included exactly once in total.
 export function hotelBreakdown(h: Hotel) {
@@ -52,6 +53,7 @@ export const paymentState = (total: number, paid: number, refunded: number) =>
         : "Unpaid";
 export interface LedgerRow {
   id: string;
+  source: "Expenses" | "Hotels" | "Flights" | "Transport" | "Activities";
   label: string;
   category: string;
   destination: string;
@@ -62,21 +64,43 @@ export interface LedgerRow {
   active: boolean;
   isFareGroup?: boolean;
 }
+export const rowForecast = (r: LedgerRow) =>
+  convert(r.active ? Math.max(r.total, r.paid) : r.paid, 1);
+export const expenseActive = (e: Expense) =>
+  e.bookingStatus !== "Cancelled" && e.includeInBudget !== false;
+export const rawExpenseForecast = (e: Expense) =>
+  expenseActive(e)
+    ? Math.max(expenseTotal(e), netPaid(e.paid, e.refunded))
+    : netPaid(e.paid, e.refunded);
 export function ledger(t: Trip): LedgerRow[] {
   return [
-    ...t.expenses.map((e) => ({
-      id: e.id,
-      label: e.description,
-      category: e.category,
-      destination: e.destination,
-      date: e.date,
-      total: expenseTotal(e),
-      paid: netPaid(e.paid, e.refunded),
-      booked: e.bookingStatus === "Booked",
-      active: e.bookingStatus !== "Cancelled" && e.includeInBudget !== false,
-    })),
-    ...t.hotels.map((h) => ({
+    ...t.expenses.map((e): LedgerRow => {
+      const ownsActivity = !!e.plannedActivityId;
+      const allocated =
+        e.kind === "Allowance"
+          ? t.expenses
+              .filter((c) => c.allowanceId === e.id)
+              .reduce((sum, c) => sum + rawExpenseForecast(c), 0)
+          : 0;
+      return {
+        id: e.id,
+        source: "Expenses",
+        label:
+          e.kind === "Allowance"
+            ? `${e.description} — unallocated allowance`
+            : e.description,
+        category: e.category,
+        destination: e.destination,
+        date: e.date,
+        total: ownsActivity ? 0 : Math.max(0, expenseTotal(e) - allocated),
+        paid: ownsActivity ? 0 : netPaid(e.paid, e.refunded),
+        booked: !ownsActivity && e.bookingStatus === "Booked",
+        active: !ownsActivity && expenseActive(e),
+      };
+    }),
+    ...t.hotels.map((h): LedgerRow => ({
       id: h.id,
+      source: "Hotels",
       label: h.name,
       category: "Hotels",
       destination: h.destination,
@@ -86,11 +110,12 @@ export function ledger(t: Trip): LedgerRow[] {
       booked: h.selected && h.status === "Booked",
       active: h.selected && h.status !== "Cancelled",
     })),
-    ...(t.fareGroups ?? []).map((g) => ({
+    ...(t.fareGroups ?? []).map((g): LedgerRow => ({
       id: g.id,
+      source: "Flights",
       label: g.name,
       category: "International flights",
-      destination: "Mumbai ↔ Kuala Lumpur",
+      destination: g.name,
       date: "",
       total: convert(g.amount, g.rate),
       paid: netPaid(g.paid, g.refunded),
@@ -98,8 +123,9 @@ export function ledger(t: Trip): LedgerRow[] {
       active: g.status !== "Cancelled" && g.includeInBudget !== false,
       isFareGroup: true,
     })),
-    ...t.transport.map((x) => ({
+    ...t.transport.map((x): LedgerRow => ({
       id: x.id,
+      source: x.mode.includes("flight") ? "Flights" : "Transport",
       label: `${x.source} → ${x.destination}`,
       category:
         x.mode === "International flight"
@@ -122,54 +148,56 @@ export function ledger(t: Trip): LedgerRow[] {
             (g) => g.id === x.fareGroupId && g.status !== "Cancelled",
           )),
     })),
-    ...t.activities.map((a) => ({
-      id: a.id,
-      label: a.name,
-      category:
-        a.category === "Adventure"
-          ? "Adventure activities"
-          : a.category === "Food"
-            ? "Food"
-            : a.category === "Shopping"
-              ? "Shopping"
-              : a.category === "Transportation"
-                ? "Local transportation"
-                : "Attractions",
-      destination: a.destination,
-      date: a.date,
-      total: a.cost,
-      paid: 0,
-      booked: a.status === "Booked",
-      active:
-        a.status !== "Cancelled" &&
-        a.includeInBudget !== false &&
-        !a.retiredTransit,
-    })),
+    ...t.activities.map((a): LedgerRow => {
+      const payment = t.expenses.find((e) => e.plannedActivityId === a.id);
+      return {
+        id: a.id,
+        source: "Activities",
+        label: a.name,
+        category: activityExpenseCategory(a.category),
+        destination: a.destination,
+        date: a.date,
+        total: Math.max(
+          a.cost,
+          payment && expenseActive(payment) ? expenseTotal(payment) : 0,
+        ),
+        paid: payment ? netPaid(payment.paid, payment.refunded) : 0,
+        booked: a.status === "Booked" || payment?.bookingStatus === "Booked",
+        active:
+          a.status !== "Cancelled" &&
+          a.includeInBudget !== false &&
+          !a.retiredTransit,
+      };
+    }),
   ];
 }
 export function totals(t: Trip) {
   const all = ledger(t),
     rows = all.filter((r) => r.active);
-  const estimated = all.reduce(
-      (s, r) => s + (r.active ? Math.max(r.total, r.paid) : r.paid),
-      0,
-    ),
+  const estimated = all.reduce((s, r) => s + rowForecast(r), 0),
     confirmed = rows.filter((r) => r.booked).reduce((s, r) => s + r.total, 0),
     paid = all.reduce((s, r) => s + r.paid, 0);
   return {
-    estimated,
-    confirmed,
-    paid,
-    unpaid: rows
-      .filter((r) => r.booked)
-      .reduce((s, r) => s + Math.max(0, r.total - r.paid), 0),
-    remaining: t.budget - estimated,
+    estimated: convert(estimated, 1),
+    confirmed: convert(confirmed, 1),
+    paid: convert(paid, 1),
+    unpaid: convert(
+      rows
+        .filter((r) => r.booked)
+        .reduce((s, r) => s + Math.max(0, r.total - r.paid), 0),
+      1,
+    ),
+    remaining: convert(t.budget - estimated, 1),
+    remainingForecast: convert(Math.max(0, estimated - paid), 1),
     bookings: rows.filter((r) => r.booked).length,
     days: daysBetween(t.start, t.end) + 1,
     nights: t.plannedNights ?? daysBetween(t.start, t.end),
-    hotels: all
-      .filter((r) => r.category === "Hotels")
-      .reduce((s, r) => s + (r.active ? Math.max(r.total, r.paid) : r.paid), 0),
+    hotels: convert(
+      all
+        .filter((r) => r.category === "Hotels")
+        .reduce((s, r) => s + rowForecast(r), 0),
+      1,
+    ),
   };
 }
 export function groupBy(t: Trip, key: "category" | "destination" | "date") {
@@ -180,8 +208,8 @@ export function groupBy(t: Trip, key: "category" | "destination" | "date") {
   ledger(t).forEach((r) => {
     const name = r[key] || "Unscheduled";
     const v = map.get(name) ?? { name, estimated: 0, paid: 0 };
-    v.estimated += r.active ? Math.max(r.total, r.paid) : r.paid;
-    v.paid += r.paid;
+    v.estimated = convert(v.estimated + rowForecast(r), 1);
+    v.paid = convert(v.paid + r.paid, 1);
     map.set(name, v);
   });
   return [...map.values()];

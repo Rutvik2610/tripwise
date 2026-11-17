@@ -42,15 +42,18 @@ test("expense payments, hotel alternatives, scenario isolation, persistence and 
   const modal = page.getByRole("dialog");
   await modal
     .getByLabel("Description", { exact: true })
-    .fill("Airport snack test");
+    .fill("Reserved airport experience");
+  await modal
+    .getByLabel("Category", { exact: true })
+    .selectOption("Attractions");
   await modal.getByLabel("Original amount", { exact: true }).fill("400");
-  await modal.getByLabel("Total payments (INR)", { exact: true }).fill("150");
+  await modal.getByLabel("Amount paid (INR)", { exact: true }).fill("150");
   await modal
     .getByLabel("Booking status", { exact: true })
     .selectOption("Booked");
   await modal.getByRole("button", { name: "Save changes" }).click();
   await expect(
-    page.getByText("Airport snack test", { exact: true }),
+    page.getByText("Reserved airport experience", { exact: true }),
   ).toBeVisible();
   let raw = await page.evaluate(() =>
     JSON.parse(localStorage.getItem("tripwise.v1")!),
@@ -58,13 +61,14 @@ test("expense payments, hotel alternatives, scenario isolation, persistence and 
   const current = raw.trips.find((t: { id: string }) => t.id === raw.activeId);
   expect(
     current.expenses.find(
-      (e: { description: string }) => e.description === "Airport snack test",
+      (e: { description: string }) =>
+        e.description === "Reserved airport experience",
     ),
   ).toMatchObject({ amount: 400, paid: 150, paymentStatus: "Partially Paid" });
   await page.reload();
   await navigate(page, "Expenses");
   await expect(
-    page.getByText("Airport snack test", { exact: true }),
+    page.getByText("Reserved airport experience", { exact: true }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Add expense", exact: true }).click();
   await page
@@ -73,7 +77,7 @@ test("expense payments, hotel alternatives, scenario isolation, persistence and 
     .fill("Invalid refund");
   await page
     .getByRole("dialog")
-    .getByLabel("Total refunds (INR)", { exact: true })
+    .getByLabel("Amount refunded (INR)", { exact: true })
     .fill("100");
   await page
     .getByRole("dialog")
@@ -268,7 +272,7 @@ test("future trip creation, hotel taxes, transport components, and trip lifecycl
   await modal
     .getByLabel("Booking status", { exact: true })
     .selectOption("Booked");
-  await modal.getByLabel("Total payments (INR)", { exact: true }).fill("1000");
+  await modal.getByLabel("Amount paid (INR)", { exact: true }).fill("1000");
   await modal.getByRole("button", { name: "Save changes" }).click();
   await expect(page.locator(".transport-price")).toContainText("₹2,280");
   await navigate(page, "Hotels");
@@ -298,11 +302,7 @@ test("future trip creation, hotel taxes, transport components, and trip lifecycl
   await expect(page.locator(".hotel-card")).toContainText("Selected stay");
   await navigate(page, "Overview");
   await expect(page.getByTestId("total-trip-cost")).toContainText("₹8,550");
-  await expect(
-    page
-      .locator(".mini-stats > div")
-      .filter({ hasText: "AMOUNT ACTUALLY PAID" }),
-  ).toContainText("₹1,000");
+  await expect(page.getByTestId("total-paid")).toContainText("₹1,000");
   await page.getByRole("button", { name: "My trips", exact: true }).click();
   const card = page.locator(".trip-card").filter({
     has: page.getByRole("heading", { name: "February escape", exact: true }),
@@ -709,15 +709,11 @@ test("Malaysia return ticket counts once in Transportation, transit costs use Ex
   await modal
     .getByLabel("Ticket booking status", { exact: true })
     .selectOption("Booked");
-  await modal.getByLabel("Total payments (INR)", { exact: true }).fill("1000");
+  await modal.getByLabel("Amount paid (INR)", { exact: true }).fill("1000");
   await modal.getByRole("button", { name: "Save changes" }).click();
   await navigate(page, "Overview");
-  await expect(
-    page.locator(".mini-stats>div").filter({ hasText: "AMOUNT ACTUALLY PAID" }),
-  ).toContainText("₹1,000");
-  await expect(
-    page.locator(".mini-stats>div").filter({ hasText: "UNPAID COMMITMENTS" }),
-  ).toContainText("₹34,550");
+  await expect(page.getByTestId("total-paid")).toContainText("₹1,000");
+  await expect(page.getByTestId("confirmed-unpaid")).toContainText("₹34,550");
   await page
     .getByLabel("Active trip", { exact: true })
     .selectOption({ label: "Malaysia + Singapore Solo Trip 2027" });

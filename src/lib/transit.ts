@@ -1,6 +1,6 @@
 import type { Layover, Transport, Trip } from "./model";
 import { blankActivity, blankCheck, blankTransport } from "./factories";
-import { convert, ledger } from "./calc";
+import { convert, ledger, rowForecast } from "./calc";
 const normal = (s: string) => s.toLowerCase();
 export const isMalaysiaOnly = (t: Trip) =>
   ((t.start === "2027-01-18" && t.end === "2027-01-28") ||
@@ -311,9 +311,12 @@ export const clockLabel = (n: number) =>
 export function transportationTotals(t: Trip) {
   const rows = ledger(t);
   const cost = (category: string) =>
-    rows
-      .filter((r) => r.category === category)
-      .reduce((s, r) => s + (r.active ? Math.max(r.total, r.paid) : r.paid), 0);
+    convert(
+      rows
+        .filter((r) => r.category === category)
+        .reduce((s, r) => s + rowForecast(r), 0),
+      1,
+    );
   const international = cost("International flights"),
     domestic = cost("Domestic/regional flights"),
     local = cost("Local transportation") + cost("Airport transfers");

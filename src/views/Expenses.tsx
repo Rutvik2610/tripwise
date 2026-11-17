@@ -1,4 +1,11 @@
 import {
+  isEveryday,
+  expenseStatus,
+  reservationLabel,
+  reconciliation,
+  allowanceUsage,
+} from "../lib/finance";
+import {
   CheckCircle2,
   Info,
   Plus,
@@ -9,7 +16,13 @@ import {
 import { useState } from "react";
 import { Bars } from "../components/Charts";
 import { Empty, ExpenseTableRows, Panel, Stat } from "../components/Shared";
-import { expenseTotal, groupBy, paymentState } from "../lib/calc";
+import {
+  expenseTotal,
+  groupBy,
+  ledger,
+  netPaid,
+  rowForecast,
+} from "../lib/calc";
 import { usePlanner } from "../lib/context";
 import { categories } from "../lib/model";
 
@@ -17,13 +30,39 @@ export default function Expenses() {
   const { trip, summary, money, add, editActions } = usePlanner();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All");
+  const [statusFilter, setStatusFilter] = useState("All");
+  const report = reconciliation(trip);
+  const accounting = ledger(trip);
+  const contribution = (id: string) => {
+    const row = accounting.find((r) => r.id === id);
+    return row ? rowForecast(row) : 0;
+  };
+  const statuses =
+    filter !== "All" && isEveryday(filter)
+      ? ["Estimated", "Spent", "Partially spent", "Refunded", "Cancelled"]
+      : [
+          "Estimated",
+          "Spent",
+          "Partially spent",
+          "Unpaid",
+          "Paid",
+          "Partially Paid",
+          "Refunded",
+          "Planned",
+          "Booked",
+          "Reserved",
+          "Cancelled",
+        ];
   const [sort, setSort] = useState("date");
   const [group, setGroup] = useState(false);
   const expenseRows = trip.expenses
     .filter(
       (e) =>
         (filter === "All" || e.category === filter) &&
-        `${e.description} ${e.destination} ${e.vendor} ${e.bookingStatus} ${paymentState(expenseTotal(e), e.paid, e.refunded)}`
+        (statusFilter === "All" ||
+          expenseStatus(e) === statusFilter ||
+          reservationLabel(e.category, e.bookingStatus) === statusFilter) &&
+        `${e.description} ${e.destination} ${e.vendor} ${e.bookingStatus} ${expenseStatus(e)} ${reservationLabel(e.category, e.bookingStatus)}`
           .toLowerCase()
           .includes(search.toLowerCase()),
     )
@@ -38,21 +77,23 @@ export default function Expenses() {
     <>
       <div className="stat-grid three">
         <Stat
-          label="ALL PLANNED COSTS"
-          value={money(summary.estimated)}
-          detail="Includes hotels, transport & activities"
+          label="EXPENSE RECORDS FORECAST"
+          value={money(report.expensesContribution)}
+          detail="Only the contribution from this module"
           icon={Wallet}
         />
         <Stat
-          label="CONFIRMED COMMITMENTS"
-          value={money(summary.confirmed)}
-          detail={`${summary.bookings} booked items · Not an extra cost`}
+          label="WHOLE-TRIP PROJECTED COST"
+          value={money(summary.estimated)}
+          detail="All modules · reconcile on Overview"
           icon={ShieldCheck}
         />
         <Stat
-          label="NET PAYMENTS"
-          value={money(summary.paid)}
-          detail="Payments less refunds · Included in costs"
+          label="PAYMENTS RECORDED HERE"
+          value={money(
+            trip.expenses.reduce((s, e) => s + netPaid(e.paid, e.refunded), 0),
+          )}
+          detail="Net of refunds · Includes linked activity payments"
           icon={CheckCircle2}
         />
       </div>
@@ -61,14 +102,14 @@ export default function Expenses() {
         <span>
           Record hotel, transport, and activity costs in their dedicated
           modules. Add only other expenses here to avoid counting the same
-          booking twice. Payments and refunds are recorded in INR at the
-          historical rate you paid. Unrefunded cancellation costs stay in the
-          forecast.
+          booking twice. Use Budget source to link a payment to an existing
+          allowance or activity. Unlinked items add new costs. Payment and
+          refund currencies are converted once using their saved rates.
         </span>
       </div>
       <Panel
         title="Expense ledger"
-        sub={`${expenseRows.length} expenses · ${money(expenseRows.filter((e) => e.bookingStatus !== "Cancelled" && e.includeInBudget !== false).reduce((s, e) => s + expenseTotal(e), 0))} planned`}
+        sub={`${expenseRows.length} records · ${money(expenseRows.reduce((s, e) => s + contribution(e.id), 0))} forecast contribution`}
         action={
           <button className="button" onClick={() => add("expenses")}>
             <Plus size={16} />
@@ -89,11 +130,24 @@ export default function Expenses() {
           <select
             aria-label="Filter category"
             value={filter}
-            onChange={(e) => setFilter(e.target.value)}
+            onChange={(e) => {
+              setFilter(e.target.value);
+              setStatusFilter("All");
+            }}
           >
             <option>All</option>
             {categories.map((c) => (
               <option key={c}>{c}</option>
+            ))}
+          </select>
+          <select
+            aria-label="Filter status"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option>All</option>
+            {statuses.map((status) => (
+              <option key={status}>{status}</option>
             ))}
           </select>
           <select
@@ -122,9 +176,9 @@ export default function Expenses() {
                   <th>Description</th>
                   <th>Date / destination</th>
                   <th>Original / rate</th>
-                  <th>Estimate</th>
+                  <th>Forecast contribution</th>
                   <th>Payment</th>
-                  <th>Booking</th>
+                  <th>Reservation</th>
                   <th>
                     <span className="sr-only">Actions</span>
                   </th>
@@ -141,6 +195,19 @@ export default function Expenses() {
                     key={e.id}
                     e={e}
                     money={money}
+                    contribution={contribution(e.id)}
+                    usage={
+                      e.kind === "Allowance"
+                        ? allowanceUsage(trip, e)
+                        : undefined
+                    }
+                    relatedLabel={
+                      e.plannedActivityId
+                        ? `Included with activity: ${trip.activities.find((a) => a.id === e.plannedActivityId)?.name}`
+                        : e.allowanceId
+                          ? `Uses allowance: ${trip.expenses.find((a) => a.id === e.allowanceId)?.description}`
+                          : ""
+                    }
                     groupTitle={
                       group && (i === 0 || a[i - 1].category !== e.category)
                         ? e.category

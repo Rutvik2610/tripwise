@@ -1,3 +1,5 @@
+import { ExpenseFields } from "./ExpenseFields";
+import type { Expense, Activity } from "../lib/model";
 import { hotelBreakdown } from "../lib/calc";
 import type { Hotel } from "../lib/model";
 import type { Currency, Store } from "../lib/model";
@@ -40,8 +42,8 @@ const money = [
   }),
 ];
 const payments = [
-  f("paid", "Total payments (INR)", "number"),
-  f("refunded", "Total refunds (INR)", "number"),
+  f("paid", "Amount paid (INR)", "number"),
+  f("refunded", "Amount refunded (INR)", "number"),
 ];
 const booking = [
   f("reference", "Booking reference"),
@@ -288,6 +290,9 @@ export function Editor({
   onClose,
   onSave,
   rates,
+  creating = false,
+  expenseOptions = [],
+  activityOptions = [],
 }: {
   title: string;
   initial: object;
@@ -295,6 +300,9 @@ export function Editor({
   onClose: () => void;
   onSave: (v: unknown) => void;
   rates: Store["rates"];
+  creating?: boolean;
+  expenseOptions?: Expense[];
+  activityOptions?: Activity[];
 }) {
   const modalRef = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -380,114 +388,137 @@ export function Editor({
             </p>
           )}
           <div className="form-grid">
-            {fields[kind]
-              .filter((field) => !field.layoverOnly || value.layoverId)
-              .map((field) => (
-                <label
-                  className={field.type === "textarea" ? "span-2" : ""}
-                  key={field.key}
-                >
-                  {field.type === "checkbox" ? (
-                    <span className="checkbox-field">
-                      <input
-                        type="checkbox"
-                        checked={Boolean(value[field.key])}
-                        onChange={(e) =>
-                          setValue({ ...value, [field.key]: e.target.checked })
-                        }
-                      />
-                      {field.label}
-                    </span>
-                  ) : (
-                    <>
-                      <span>{field.label}</span>
-                      {field.type === "select" ? (
-                        <select
-                          disabled={
-                            kind === "transport" &&
-                            !!value.fareGroupId &&
-                            ["status", "currency"].includes(field.key)
-                          }
-                          aria-label={field.label}
-                          value={String(value[field.key] ?? "")}
-                          onChange={(e) =>
-                            setValue({
-                              ...value,
-                              [field.key]: e.target.value,
-                              ...(field.key === "currency"
-                                ? { rate: rates[e.target.value as Currency] }
-                                : {}),
-                            })
-                          }
-                        >
-                          {field.options?.map((o) => (
-                            <option key={o}>{o}</option>
-                          ))}
-                        </select>
-                      ) : field.type === "textarea" ? (
-                        <textarea
-                          aria-label={field.label}
-                          rows={3}
-                          value={String(value[field.key] ?? "")}
-                          onChange={(e) =>
-                            setValue({ ...value, [field.key]: e.target.value })
-                          }
-                        />
-                      ) : (
+            {kind === "expenses" ? (
+              <ExpenseFields
+                value={value as unknown as Expense}
+                onChange={(e) =>
+                  setValue(e as unknown as Record<string, unknown>)
+                }
+                rates={rates}
+                creating={creating}
+                expenses={expenseOptions}
+                activities={activityOptions}
+              />
+            ) : (
+              fields[kind]
+                .filter((field) => !field.layoverOnly || value.layoverId)
+                .map((field) => (
+                  <label
+                    className={field.type === "textarea" ? "span-2" : ""}
+                    key={field.key}
+                  >
+                    {field.type === "checkbox" ? (
+                      <span className="checkbox-field">
                         <input
-                          aria-label={field.label}
-                          autoFocus={field === fields[kind][0]}
-                          type={field.type ?? "text"}
-                          disabled={
-                            (field.key === "rate" &&
-                              value.currency === "INR") ||
-                            (kind === "hotels" &&
-                              field.key === "taxes" &&
-                              value.taxMode === "Included") ||
-                            (kind === "transport" &&
-                              !!value.fareGroupId &&
-                              [
-                                "fare",
-                                "taxes",
-                                "baggage",
-                                "seat",
-                                "paid",
-                                "refunded",
-                                "currency",
-                                "rate",
-                                "reference",
-                              ].includes(field.key))
-                          }
-                          min={field.type === "number" ? 0 : undefined}
-                          max={field.max}
-                          step={field.type === "number" ? "any" : undefined}
-                          required={
-                            field.required &&
-                            !(field.key === "date" && value.layoverId)
-                          }
-                          value={String(value[field.key] ?? "")}
+                          type="checkbox"
+                          checked={Boolean(value[field.key])}
                           onChange={(e) =>
                             setValue({
                               ...value,
-                              ...(["cost", "amount"].includes(field.key) &&
-                              value.layoverId
-                                ? { costPending: false }
-                                : {}),
-                              [field.key]:
-                                field.type === "number"
-                                  ? e.target.value === "" && field.nullable
-                                    ? null
-                                    : Number(e.target.value)
-                                  : e.target.value,
+                              [field.key]: e.target.checked,
                             })
                           }
                         />
-                      )}
-                    </>
-                  )}
-                  {field.hint && <small>{field.hint}</small>}
-                </label>
-              ))}
+                        {field.label}
+                      </span>
+                    ) : (
+                      <>
+                        <span>{field.label}</span>
+                        {field.type === "select" ? (
+                          <select
+                            disabled={
+                              kind === "transport" &&
+                              !!value.fareGroupId &&
+                              ["status", "currency"].includes(field.key)
+                            }
+                            aria-label={field.label}
+                            value={String(value[field.key] ?? "")}
+                            onChange={(e) =>
+                              setValue({
+                                ...value,
+                                [field.key]: e.target.value,
+                                ...(field.key === "currency"
+                                  ? { rate: rates[e.target.value as Currency] }
+                                  : {}),
+                              })
+                            }
+                          >
+                            {field.options?.map((o) => (
+                              <option key={o} value={o}>
+                                {kind === "activities" && o === "Booked"
+                                  ? "Reserved"
+                                  : o}
+                              </option>
+                            ))}
+                          </select>
+                        ) : field.type === "textarea" ? (
+                          <textarea
+                            aria-label={field.label}
+                            rows={3}
+                            value={String(value[field.key] ?? "")}
+                            onChange={(e) =>
+                              setValue({
+                                ...value,
+                                [field.key]: e.target.value,
+                              })
+                            }
+                          />
+                        ) : (
+                          <input
+                            aria-label={field.label}
+                            autoFocus={field === fields[kind][0]}
+                            type={field.type ?? "text"}
+                            disabled={
+                              (field.key === "rate" &&
+                                value.currency === "INR") ||
+                              (kind === "hotels" &&
+                                field.key === "taxes" &&
+                                value.taxMode === "Included") ||
+                              (kind === "transport" &&
+                                !!value.fareGroupId &&
+                                [
+                                  "fare",
+                                  "taxes",
+                                  "baggage",
+                                  "seat",
+                                  "paid",
+                                  "refunded",
+                                  "currency",
+                                  "rate",
+                                  "reference",
+                                ].includes(field.key))
+                            }
+                            min={field.type === "number" ? 0 : undefined}
+                            max={field.max}
+                            step={field.type === "number" ? "any" : undefined}
+                            required={
+                              field.required &&
+                              !(field.key === "date" && value.layoverId)
+                            }
+                            value={String(value[field.key] ?? "")}
+                            onChange={(e) =>
+                              setValue({
+                                ...value,
+                                ...(["cost", "amount"].includes(field.key) &&
+                                value.layoverId
+                                  ? { costPending: false }
+                                  : {}),
+                                [field.key]:
+                                  field.type === "number"
+                                    ? e.target.value === "" && field.nullable
+                                      ? null
+                                      : Number(e.target.value)
+                                    : e.target.value,
+                              })
+                            }
+                          />
+                        )}
+                      </>
+                    )}
+                    {field.hint && <small>{field.hint}</small>}
+                  </label>
+                ))
+            )}
           </div>
           {kind === "hotels" && (
             <HotelTaxPreview hotel={value as unknown as Hotel} />

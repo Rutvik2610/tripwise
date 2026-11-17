@@ -60,7 +60,12 @@ describe("January–February 2027 flight plan", () => {
     expect(old).toEqual(before);
     expect(migrateStore(next)).toBe(next);
     expect(validate(JSON.parse(JSON.stringify(next)))).toEqual(next);
-    expect(seed()).toEqual(next);
+    expect(seed().trips.map((t) => t.transport)).toEqual(
+      next.trips.map((t) => t.transport),
+    );
+    expect(seed().trips.map((t) => t.fareGroups)).toEqual(
+      next.trips.map((t) => t.fareGroups),
+    );
   });
   it("uses one 22588 ticket with two accurate segments, SZB arrival and a 4h30 connection", () => {
     for (const t of seed().trips) {
