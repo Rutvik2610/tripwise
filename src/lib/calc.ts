@@ -95,7 +95,7 @@ export function ledger(t: Trip): LedgerRow[] {
       total: convert(g.amount, g.rate),
       paid: netPaid(g.paid, g.refunded),
       booked: g.status === "Booked",
-      active: g.status !== "Cancelled",
+      active: g.status !== "Cancelled" && g.includeInBudget !== false,
       isFareGroup: true,
     })),
     ...t.transport.map((x) => ({
@@ -116,6 +116,7 @@ export function ledger(t: Trip): LedgerRow[] {
       booked: !x.fareGroupId && x.status === "Booked",
       active:
         x.status !== "Cancelled" &&
+        (!x.decisionId || x.selectedAlternative === true) &&
         (!x.fareGroupId ||
           (t.fareGroups ?? []).some(
             (g) => g.id === x.fareGroupId && g.status !== "Cancelled",
@@ -165,7 +166,7 @@ export function totals(t: Trip) {
     remaining: t.budget - estimated,
     bookings: rows.filter((r) => r.booked).length,
     days: daysBetween(t.start, t.end) + 1,
-    nights: daysBetween(t.start, t.end),
+    nights: t.plannedNights ?? daysBetween(t.start, t.end),
     hotels: all
       .filter((r) => r.category === "Hotels")
       .reduce((s, r) => s + (r.active ? Math.max(r.total, r.paid) : r.paid), 0),
@@ -228,7 +229,8 @@ export function simulate(t: Trip) {
   const base =
     s.nights * s.nightly +
     s.flights +
-    (s.food + s.transport) * (daysBetween(t.start, t.end) + 1) +
+    (s.food + s.transport) *
+      ((t.plannedNights ?? daysBetween(t.start, t.end)) + 1) +
     s.attractions;
   return {
     base,

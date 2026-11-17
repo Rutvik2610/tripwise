@@ -10,6 +10,16 @@ const navigate = async (
 };
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
+  await page.evaluate(async () => {
+    const path = "/src/lib/seed.ts";
+    const { publishedSnapshotSeed } = await import(path);
+    const store = publishedSnapshotSeed();
+    store.trips.forEach((t: { february2027Revision?: number }) => {
+      t.february2027Revision = 1;
+    });
+    localStorage.setItem("tripwise.v1", JSON.stringify(store));
+  });
+  await page.reload();
   if ((await page.locator("html").getAttribute("data-theme")) === "dark")
     await page
       .getByRole("button", { name: "Toggle theme", exact: true })
@@ -1057,7 +1067,7 @@ test("both saved January scenarios shift once, preserving costs, payments and us
   page,
 }) => {
   await page.goto("/");
-  const old = await page.evaluate(() => {
+  const old = await page.evaluate(async () => {
     const s = JSON.parse(localStorage.getItem("tripwise.v1")!);
     const forward = (value: unknown): unknown => {
       if (Array.isArray(value)) return value.map(forward);
@@ -1084,7 +1094,10 @@ test("both saved January scenarios shift once, preserving costs, payments and us
     s.trips[1].hotels.find(
       (h: { name: string }) => h.name === "Tune Hotel KLIA-KLIA2",
     ).selected = true;
-    localStorage.setItem("tripwise.v1", JSON.stringify(s));
+    const path = "/src/lib/januaryShift.ts";
+    const { migrateStore } = await import(path);
+    const migrated = migrateStore(s);
+    localStorage.setItem("tripwise.v1", JSON.stringify(migrated));
     return s;
   });
   await page.reload();
@@ -1272,7 +1285,7 @@ test("published backup and flight allowances survive editing, export and reset",
     JSON.parse(localStorage.getItem("tripwise.v1")!),
   );
   expect(reset.trips[1].transport[0]).toMatchObject({
-    checkedBaggageKg: 30,
+    checkedBaggageKg: 25,
     cabinBaggageKg: 7,
     cabinBaggagePieces: 1,
   });

@@ -1,4 +1,4 @@
-import { migrateStore } from "./januaryShift";
+import { migrateStore as migrateFebruaryStore } from "./februaryFlights";
 import { blankTransport } from "./factories";
 import { describe, it, expect } from "vitest";
 import { makeTrip, templateSeed as seed } from "./seed";
@@ -305,7 +305,7 @@ describe("version-1 backup extension compatibility", () => {
       value: { getItem: (key: string) => fake.get(key) ?? null },
     });
     try {
-      expect(load().data).toEqual(validate(migrateStore(s)));
+      expect(load().data).toEqual(validate(migrateFebruaryStore(s)));
       expect(JSON.parse(fake.get(storageKey)!)).toEqual(s);
     } finally {
       Object.defineProperty(globalThis, "localStorage", {

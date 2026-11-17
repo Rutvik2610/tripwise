@@ -1,4 +1,4 @@
-import { migrateStore } from "./januaryShift";
+import { migrateStore } from "./februaryFlights";
 import { z } from "zod";
 import type { Store } from "./model";
 import {
@@ -48,7 +48,7 @@ const hotel = z.object({
   rate: num.positive(),
   nightly: num.nullable(),
   taxes: num,
-  propertyTaxBasis: z.enum(["Per night", "Whole stay"]).default("Whole stay"),
+  propertyTaxBasis: z.enum(["Per night", "Whole stay"]).optional(),
   tourismTax: num,
   heritageTax: num,
   propertyFees: num,
@@ -74,6 +74,16 @@ const time = z.union([
   z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
 ]);
 const transport = z.object({
+  decisionId: id.optional(),
+  selectedAlternative: z.boolean().optional(),
+  aircraft: str.optional(),
+  operatingCarrier: str.optional(),
+  fareType: str.optional(),
+  bookingPlatform: str.optional(),
+  cabinClass: str.optional(),
+  quoteStatus: z
+    .enum(["User search quote", "Older estimate — requote needed"])
+    .optional(),
   cabinBaggagePieces: num.int().max(100).nullable().optional(),
   cabinBaggageKg: num.max(1000).nullable().optional(),
   checkedBaggageKg: num.max(1000).nullable().optional(),
@@ -158,6 +168,10 @@ const stop = z.object({
   end: date,
 });
 const fareGroup = z.object({
+  includeInBudget: z.boolean().optional(),
+  quoteStatus: z
+    .enum(["User search quote", "Older estimate — requote needed"])
+    .optional(),
   id,
   name: str.min(1),
   amount: num,
@@ -172,6 +186,8 @@ const fareGroup = z.object({
   cabin: str,
 });
 const layover = z.object({
+  connectionOnly: z.boolean().optional(),
+  needsReconfirmation: z.boolean().optional(),
   id,
   fareGroupId: id.optional(),
   airport: z.literal("SIN"),
@@ -202,6 +218,9 @@ const layover = z.object({
   notes: str,
 });
 const trip = z.object({
+  february2027Revision: z.literal(1).optional(),
+  plannedNights: num.int().max(3650).optional(),
+  flightUpdateConflicts: z.array(str).max(1000).optional(),
   january2027Shift: z.literal(1).optional(),
   malaysiaPlanRevision: z.literal(2).optional(),
   fareGroups: z.array(fareGroup).max(1000).optional(),
@@ -275,6 +294,31 @@ export function validate(raw: unknown): Store {
     ]) {
       if (ids.has(entry.id)) throw Error("Duplicate record IDs in backup.");
       ids.add(entry.id);
+    }
+    const decisions = new Set(
+      t.transport.flatMap((r) => (r.decisionId ? [r.decisionId] : [])),
+    );
+    for (const decision of decisions) {
+      const options = t.transport.filter((r) => r.decisionId === decision);
+      if (options.some((r) => r.fareGroupId))
+        throw Error("Flight alternatives cannot also be ticket segments.");
+      if (
+        options.filter((r) => r.selectedAlternative && r.status !== "Cancelled")
+          .length !== 1
+      )
+        throw Error(
+          "Choose exactly one active alternative for each flight decision.",
+        );
+      if (
+        options.some(
+          (r) =>
+            !r.selectedAlternative &&
+            (r.paid || r.refunded || r.status === "Booked" || r.reference),
+        )
+      )
+        throw Error(
+          "A flight with booking/payment history cannot be deselected.",
+        );
     }
     const groupIds = new Set((t.fareGroups ?? []).map((g) => g.id));
     for (const g of t.fareGroups ?? []) {

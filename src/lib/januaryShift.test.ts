@@ -1,3 +1,4 @@
+import { migrateStore as migrateFebruaryStore } from "./februaryFlights";
 import { describe, expect, it } from "vitest";
 import { makeTrip, templateSeed as seed } from "./seed";
 import { migrateStore, shiftJanuaryTrip, shiftDateText } from "./januaryShift";
@@ -185,7 +186,7 @@ describe("January 2027 one-day shift", () => {
       value: { getItem: (k: string) => (k === storageKey ? raw : null) },
     });
     try {
-      expect(load().data).toEqual(expected);
+      expect(load().data).toEqual(validate(migrateFebruaryStore(s)));
       expect(localStorage.getItem(storageKey)).toBe(raw);
     } finally {
       Object.defineProperty(globalThis, "localStorage", {

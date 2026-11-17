@@ -1,3 +1,5 @@
+import { AccommodationDateWarning } from "../components/FlightPlanning";
+import { activeAlternative } from "../lib/februaryFlights";
 import { StaySummary } from "../components/CostOverview";
 import { TransitPlanning } from "../components/TransitPlanning";
 import { attachedLayoverLeg } from "../lib/transit";
@@ -18,7 +20,9 @@ export default function Itinerary() {
       !a.retiredTransit &&
       (!a.layoverId ||
         trip.layovers?.some(
-          (l) => l.id === a.layoverId && !!attachedLayoverLeg(trip, l),
+          (l) =>
+            l.id === a.layoverId &&
+            (!!attachedLayoverLeg(trip, l) || l.needsReconfirmation),
         )),
   );
   const duration = summary.days;
@@ -61,6 +65,7 @@ export default function Itinerary() {
   };
   return (
     <>
+      <AccommodationDateWarning />
       <section className="itinerary-intro">
         <span className="eyebrow">
           {dateLabel(trip.start)} – {dateLabel(trip.end)} · {summary.days} days
@@ -179,7 +184,10 @@ export default function Itinerary() {
               </header>
               {trip.transport
                 .filter(
-                  (r) => r.status !== "Cancelled" && r.departureDate === d,
+                  (r) =>
+                    r.status !== "Cancelled" &&
+                    activeAlternative(r) &&
+                    r.departureDate === d,
                 )
                 .map((r) => (
                   <div className="itinerary-transfer" key={r.id}>

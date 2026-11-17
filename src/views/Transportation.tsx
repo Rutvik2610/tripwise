@@ -1,3 +1,8 @@
+import {
+  FlightPlanning,
+  AccommodationDateWarning,
+} from "../components/FlightPlanning";
+import { activeAlternative } from "../lib/februaryFlights";
 import { TransportationSummary } from "../components/TransportationSummary";
 import { TransitPlanning } from "../components/TransitPlanning";
 import { transportationTotals } from "../lib/transit";
@@ -25,7 +30,7 @@ export default function Transportation() {
   const { trip, money, add, editActions } = usePlanner();
 
   const activeTransport = trip.transport.filter(
-    (t) => t.status !== "Cancelled",
+    (t) => t.status !== "Cancelled" && activeAlternative(t),
   );
   const figures = transportationTotals(trip);
   const knownDurations = activeTransport
@@ -38,7 +43,9 @@ export default function Transportation() {
   ];
   return (
     <>
+      <AccommodationDateWarning />
       <TransportationSummary />
+      <FlightPlanning />
       <ResearchUpdate />
       <TransitPlanning />
       <div className="stat-grid operational-stats">
@@ -72,7 +79,7 @@ export default function Transportation() {
           verification.
         </span>
       </div>
-      {connectionWarnings(trip.transport).map((w) => (
+      {connectionWarnings(activeTransport).map((w) => (
         <div className="notice warning" key={w}>
           <Info size={18} />
           {w}
@@ -120,7 +127,7 @@ export default function Transportation() {
                     Arrival:{" "}
                     {t.arrivalDate ? shortDate(t.arrivalDate) : "Pending"}{" "}
                     {t.arrivalTime}{" "}
-                    {t.arrivalTerminal && `· Terminal ${t.arrivalTerminal}`} ·{" "}
+                    {`· Terminal ${t.arrivalTerminal || "Unverified"}`} ·{" "}
                     {travelMinutes(t) === null
                       ? "Duration pending"
                       : `${travelMinutes(t)} minutes`}
@@ -141,6 +148,24 @@ export default function Transportation() {
                         : `${t.checkedBaggageKg} kg`}
                     </p>
                   )}
+                  {t.decisionId && (
+                    <p>
+                      <strong>
+                        {t.selectedAlternative
+                          ? "Selected return option"
+                          : "Unselected alternative — excluded from forecast"}
+                      </strong>
+                    </p>
+                  )}
+                  {t.quoteStatus && <p>{t.quoteStatus}</p>}
+                  {t.aircraft !== undefined && (
+                    <p>
+                      Aircraft: {t.aircraft || "Unverified"} · Operating
+                      airline: {t.operatingCarrier || "Unverified"} · Cabin:{" "}
+                      {t.cabinClass || "Unverified"} · Fare:{" "}
+                      {t.fareType || "Unverified"}
+                    </p>
+                  )}
                   <details>
                     <summary>Fare & booking details</summary>
                     <p>
@@ -149,7 +174,12 @@ export default function Transportation() {
                         : `Base ${t.fare} + taxes ${t.taxes} + baggage ${t.baggage} + seats ${t.seat} ${t.currency}. Rate: ${t.rate} INR/${t.currency}.`}
                     </p>
                     <p>
-                      {t.refundable ? "Refundable" : "Refundability unverified"}{" "}
+                      {t.refundable
+                        ? "Refundable"
+                        : t.number === "AK 6324" &&
+                            t.quoteStatus === "User search quote"
+                          ? "Non-refundable"
+                          : "Refundability unverified"}{" "}
                       · Ref: {t.reference || "None"} ·{" "}
                       {t.fareGroupId
                         ? "Payment recorded on ticket"
@@ -170,7 +200,7 @@ export default function Transportation() {
                 <div className="transport-price">
                   <strong className={t.fareGroupId ? "linked-fare-label" : ""}>
                     {t.fareGroupId
-                      ? "Included in round-trip ticket"
+                      ? "Included in shared ticket"
                       : money(transportTotal(t))}
                   </strong>
                   <Badge tone={t.status === "Booked" ? "green" : ""}>

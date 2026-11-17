@@ -51,7 +51,11 @@ const booking = [
 export const fields: Record<string, Field[]> = {
   fareGroups: [
     f("name", "Ticket name", "text", { required: true }),
-    f("amount", "Total round-trip fare", "number"),
+    select("quoteStatus", "Quotation status", [
+      "User search quote",
+      "Older estimate — requote needed",
+    ]),
+    f("amount", "Total ticket fare", "number"),
     ...money,
     select("status", "Ticket booking status", bookingStatuses),
     ...payments,
@@ -206,6 +210,15 @@ export const fields: Record<string, Field[]> = {
       "Airport shuttle",
     ]),
     f("provider", "Provider"),
+    f("operatingCarrier", "Operating airline"),
+    f("aircraft", "Aircraft"),
+    f("bookingPlatform", "Booking platform"),
+    f("cabinClass", "Cabin class"),
+    f("fareType", "Fare type / conditions"),
+    select("quoteStatus", "Quotation status", [
+      "User search quote",
+      "Older estimate — requote needed",
+    ]),
     f("number", "Flight / train / bus number"),
     f("departureTerminal", "Departure terminal"),
     f("arrivalTerminal", "Arrival terminal"),

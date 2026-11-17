@@ -1,3 +1,4 @@
+import { AccommodationDateWarning } from "../components/FlightPlanning";
 import { ResearchUpdate } from "../components/ResearchUpdate";
 import { hotelDifference } from "../lib/overview";
 import { blankHotel } from "../lib/factories";
@@ -91,6 +92,7 @@ export default function Hotels() {
   };
   return (
     <>
+      <AccommodationDateWarning />
       <ResearchUpdate />
       <div className="notice">
         <Info size={17} />

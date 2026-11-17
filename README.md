@@ -161,3 +161,7 @@ Version-1 backups remain compatible through optional revision/retirement/link fi
 Fresh installations and **Settings → Reset to published data** load the November 15, 2026 export stored in `src/data/published-trip-data.json`. The snapshot preserves both scenarios, selections, edited costs, activities and settings. Existing browser data is not automatically replaced; export local changes before resetting. No review step is required to load the published snapshot.
 
 Flight details and their editor now store cabin piece count, cabin weight and checked weight separately from baggage charges. Published flights have one cabin bag up to 7 kg; BOM–KUL has 30 kg checked baggage, KUL–BOM/SIN–BOM/LGK–SIN have 25 kg, and the Malaysia domestic legs have 20 kg. These metadata fields do not affect fares or budget totals and remain editable on shared-ticket legs. Old backups without allowance fields remain importable.
+
+### January–February 2027 flight plan
+
+Both original scenarios now use 23 January–3 February. Hotels remain exactly as saved and show an accommodation-date warning until updated separately. See [flight inventory, totals and migration details](docs/february-flight-plan.md). The outbound arrives at **SZB (Subang)**; the Langkawi flight still departs **KUL T2**. One connected outbound fare and one selected return alternative feed the shared ledger. Malaysia Only retains its stale return estimate without adding the overlapping outbound quote.

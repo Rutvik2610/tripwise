@@ -26,11 +26,15 @@ export function withFlightAllowances(t: Trip): Trip {
                 : undefined;
       return {
         ...r,
-        cabinBaggagePieces: r.cabinBaggagePieces ?? 1,
-        cabinBaggageKg: r.cabinBaggageKg ?? 7,
+        cabinBaggagePieces:
+          r.cabinBaggagePieces === undefined ? 1 : r.cabinBaggagePieces,
+        cabinBaggageKg: r.cabinBaggageKg === undefined ? 7 : r.cabinBaggageKg,
         ...(checked === undefined
           ? {}
-          : { checkedBaggageKg: r.checkedBaggageKg ?? checked }),
+          : {
+              checkedBaggageKg:
+                r.checkedBaggageKg === undefined ? checked : r.checkedBaggageKg,
+            }),
       };
     }),
   };

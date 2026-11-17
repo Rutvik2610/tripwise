@@ -1,3 +1,4 @@
+import { AccommodationDateWarning } from "./FlightPlanning";
 import { Plane, BedDouble, Wallet, ArrowUpRight } from "lucide-react";
 import { usePlanner } from "../lib/context";
 import { costOverview } from "../lib/overview";
@@ -8,6 +9,7 @@ export function CostOverview() {
   const s = costOverview(trip);
   return (
     <section className="cost-overview" aria-label="Trip cost summary">
+      <AccommodationDateWarning />
       <div className="cost-headline">
         <div className="cost-primary">
           <span className="eyebrow">

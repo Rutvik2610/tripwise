@@ -1,4 +1,4 @@
-import { migrateStore } from "./lib/januaryShift";
+import { migrateStore } from "./lib/februaryFlights";
 import type { LucideIcon } from "lucide-react";
 import {
   ArrowRight,
@@ -194,12 +194,32 @@ export default function App() {
       );
       return;
     }
+    if (
+      kind === "transport" &&
+      trip.transport.find((r) => r.id === id)?.decisionId
+    ) {
+      setToast(
+        "Choose another return option from the flight comparison; alternatives cannot be deleted independently.",
+      );
+      return;
+    }
     if (confirm("Delete this entry? This cannot be undone."))
       updateTrip((t) => ({ ...t, [kind]: t[kind].filter((x) => x.id !== id) }));
   };
   const duplicate = (kind: Collection, id: string) =>
     updateTrip((t) => {
       const item = t[kind].find((x) => x.id === id);
+      if (
+        kind === "transport" &&
+        item &&
+        "decisionId" in item &&
+        item.decisionId
+      ) {
+        setToast(
+          "Use the existing return alternatives. Add a separate transport record for a new journey.",
+        );
+        return t;
+      }
       if (
         kind === "transport" &&
         item &&

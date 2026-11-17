@@ -81,6 +81,14 @@ export interface Hotel {
   refunded: number;
 }
 export interface Transport {
+  decisionId?: string;
+  selectedAlternative?: boolean;
+  aircraft?: string;
+  operatingCarrier?: string;
+  fareType?: string;
+  bookingPlatform?: string;
+  cabinClass?: string;
+  quoteStatus?: "User search quote" | "Older estimate — requote needed";
   cabinBaggagePieces?: number | null;
   cabinBaggageKg?: number | null;
   checkedBaggageKg?: number | null;
@@ -156,6 +164,8 @@ export interface Simulation {
   contingency: number;
 }
 export interface FareGroup {
+  includeInBudget?: boolean;
+  quoteStatus?: "User search quote" | "Older estimate — requote needed";
   id: string;
   name: string;
   amount: number;
@@ -170,6 +180,8 @@ export interface FareGroup {
   cabin: string;
 }
 export interface Layover {
+  connectionOnly?: boolean;
+  needsReconfirmation?: boolean;
   id: string;
   fareGroupId?: string;
   airport: string;
@@ -196,6 +208,9 @@ export interface Layover {
   notes: string;
 }
 export interface Trip {
+  february2027Revision?: 1;
+  plannedNights?: number;
+  flightUpdateConflicts?: string[];
   january2027Shift?: 1;
   malaysiaPlanRevision?: 2;
   fareGroups?: FareGroup[];

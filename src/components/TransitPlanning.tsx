@@ -173,6 +173,9 @@ export function TransitPlanning({
               </strong>
             </div>
             <p>
+              <strong>{ticket.quoteStatus}</strong>
+            </p>
+            <p>
               Fare counted once, not per direction.{" "}
               {money(netPaid(ticket.paid, ticket.refunded))} net paid. Airline,
               allowance, fare conditions and connection protection remain
@@ -202,6 +205,46 @@ export function TransitPlanning({
         const duration = layoverMinutes(l),
           leg = attachedLayoverLeg(trip, l),
           retained = trip.expenses.filter((e) => e.layoverId === l.id);
+        if (l.connectionOnly || l.needsReconfirmation)
+          return (
+            <Panel
+              key={l.id}
+              title={
+                l.connectionOnly
+                  ? "Singapore Changi (SIN) — outbound connection"
+                  : "Singapore return transit — reconfirmation required"
+              }
+              sub={
+                l.connectionOnly
+                  ? "24 January 2027 · user flight-search details"
+                  : "Old schedule is not verified for the new travel window"
+              }
+              action={
+                <button
+                  className="text-button"
+                  onClick={() => setEditing({ kind: "layovers", value: l })}
+                >
+                  Edit transit details
+                </button>
+              }
+            >
+              <div className="transit-body">
+                <p>
+                  {l.connectionOnly
+                    ? `Arrival ${l.arrivalTime} · Connecting departure ${l.departureTime} · 4h 30m · UTC+8`
+                    : "Exact date, flight schedule, connection time and terminal details need reconfirmation. The old 08:15–18:50 connection is not a verified new-date schedule."}
+                </p>
+                {l.connectionOnly && (
+                  <p>
+                    Arrival terminal: Unverified (screenshot Terminal 0 is not
+                    valid confirmation) · Departure terminal:{" "}
+                    {l.departureTerminal || "Unverified"}
+                  </p>
+                )}
+                <p>{l.notes}</p>
+              </div>
+            </Panel>
+          );
         return (
           <Panel
             key={l.id}

@@ -43,7 +43,12 @@ export default function Trips() {
         idMap.set(old, x.id);
       }),
     );
+    const decisions = new Map<string, string>();
     copied.transport.forEach((r) => {
+      if (r.decisionId) {
+        if (!decisions.has(r.decisionId)) decisions.set(r.decisionId, uid());
+        r.decisionId = decisions.get(r.decisionId)!;
+      }
       if (r.fareGroupId)
         r.fareGroupId = idMap.get(r.fareGroupId) ?? r.fareGroupId;
     });

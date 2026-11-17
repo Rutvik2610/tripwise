@@ -1,3 +1,4 @@
+import { migrateStore } from "./februaryFlights";
 import publishedData from "../data/published-trip-data.json";
 import { withFlightAllowances } from "./flightAllowances";
 import { validate } from "./storage";
@@ -249,7 +250,11 @@ export function templateSeed(): Store {
 }
 
 // A new installation or Reset loads the published user snapshot, never mutating it.
-export function seed(): Store {
+export function publishedSnapshotSeed(): Store {
   const store = validate(structuredClone(publishedData));
   return { ...store, trips: store.trips.map(withFlightAllowances) };
+}
+
+export function seed(): Store {
+  return migrateStore(publishedSnapshotSeed());
 }

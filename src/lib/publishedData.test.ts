@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import publishedData from "../data/published-trip-data.json";
-import { seed } from "./seed";
+import { publishedSnapshotSeed as seed } from "./seed";
 import { validate } from "./storage";
 import { withFlightAllowances } from "./flightAllowances";
 import { totals, transportTotal } from "./calc";
