@@ -1,5 +1,6 @@
 import {
   FlightPlanning,
+  ReturnFlightChoice,
   AccommodationDateWarning,
 } from "../components/FlightPlanning";
 import { activeAlternative } from "../lib/februaryFlights";
@@ -32,6 +33,14 @@ export default function Transportation() {
   const activeTransport = trip.transport.filter(
     (t) => t.status !== "Cancelled" && activeAlternative(t),
   );
+  const journey = trip.transport
+    .filter(activeAlternative)
+    .slice()
+    .sort(
+      (a, b) =>
+        (a.departureDate || "9999").localeCompare(b.departureDate || "9999") ||
+        (a.departureTime || "99:99").localeCompare(b.departureTime || "99:99"),
+    );
   const figures = transportationTotals(trip);
   const knownDurations = activeTransport
     .map(travelMinutes)
@@ -97,7 +106,7 @@ export default function Transportation() {
       >
         {trip.transport.length ? (
           <div className="transport-list">
-            {trip.transport.map((t) => (
+            {journey.map((t) => (
               <article
                 className={
                   "transport-card " +
@@ -109,6 +118,9 @@ export default function Transportation() {
                   <Plane size={22} />
                 </div>
                 <div className="transport-route">
+                  {t.decisionId && (
+                    <ReturnFlightChoice decisionId={t.decisionId} />
+                  )}
                   <small>
                     {t.mode} · {t.provider || "Provider unverified"} {t.number}
                   </small>

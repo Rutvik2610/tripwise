@@ -62,10 +62,7 @@ test("both live default scenarios use the February plan and preserve all origina
       name: "Singapore Changi (SIN) — outbound connection",
       exact: true,
     }),
-  ).toBeVisible();
-  await expect(
-    page.getByText(/Arrival terminal: Unverified \(screenshot Terminal 0/),
-  ).toBeVisible();
+  ).toHaveCount(0);
   const domestic = page
     .locator(".transport-card")
     .filter({ hasText: "AK 6324" });
@@ -120,33 +117,33 @@ test("return alternatives count once, can be switched and preserve unknown Optio
 }) => {
   await page.goto("/");
   await navigate(page, "Transportation");
-  const panel = page.locator(".panel").filter({
-    has: page.getByRole("heading", {
-      name: "Singapore → Mumbai return alternatives",
-      exact: true,
-    }),
-  });
-  await expect(
-    panel.getByRole("button", { name: "AI 2108 selected", exact: true }),
-  ).toBeDisabled();
-  await expect(panel).toContainText(
-    "Cabin baggage: Unverified · Checked baggage: Unverified",
+  const choice = page.getByRole("combobox", { name: "Return flight option" });
+  await expect(choice.locator("option:checked")).toContainText("AI 2108");
+  const cards = page.locator(".transport-list > .transport-card");
+  await expect(cards).toHaveCount(5);
+  const numbers = await cards
+    .locator(".transport-route > small")
+    .allTextContents();
+  expect(
+    numbers.map((text) => text.match(/(?:SQ|AK|AI) \d+/)?.[0] ?? "regional"),
+  ).toEqual(["SQ 423", "SQ 8584", "AK 6324", "regional", "AI 2108"]);
+  await expect(cards.last()).toContainText("Checked baggage: Unverified");
+  const optionA = await choice
+    .locator("option")
+    .filter({ hasText: "AI 2106" })
+    .getAttribute("value");
+  const optionB = await choice.inputValue();
+  await choice.selectOption(optionA!);
+  await expect(cards.last().locator(".transport-route > small")).toContainText(
+    "AI 2106",
   );
-  await panel
-    .getByRole("button", { name: "Select AI 2106", exact: true })
-    .click();
-  await expect(
-    panel.getByRole("button", { name: "AI 2106 selected", exact: true }),
-  ).toBeDisabled();
   await expect(page.getByTestId("transport-total")).toHaveText("₹51,140");
   await page.reload();
   await navigate(page, "Transportation");
-  await expect(
-    panel.getByRole("button", { name: "AI 2106 selected", exact: true }),
-  ).toBeDisabled();
-  await panel
-    .getByRole("button", { name: "Select AI 2108", exact: true })
-    .click();
+  await expect(choice).toHaveValue(optionA!);
+  await choice.selectOption(optionB);
+  await expect(cards).toHaveCount(5);
+  await expect(page.getByTestId("transport-total")).toHaveText("₹51,140");
   await navigate(page, "Itinerary");
   await expect(
     page.getByText("Travel: Singapore (SIN) → Mumbai (BOM)", { exact: true }),

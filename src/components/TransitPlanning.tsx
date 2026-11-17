@@ -205,6 +205,7 @@ export function TransitPlanning({
         const duration = layoverMinutes(l),
           leg = attachedLayoverLeg(trip, l),
           retained = trip.expenses.filter((e) => e.layoverId === l.id);
+        if (l.connectionOnly && view === "transportation") return null;
         if (l.connectionOnly || l.needsReconfirmation)
           return (
             <Panel

@@ -27,16 +27,11 @@ export function AccommodationDateWarning() {
   );
 }
 export function FlightPlanning() {
-  const { trip, updateTrip, money, store, setStore } = usePlanner();
+  const { trip, money, store, setStore } = usePlanner();
   const [editing, setEditing] = useState<FareGroup | null>(null);
   const tickets = (trip.fareGroups ?? []).filter(
     (g) => g.id.endsWith(":feb-outbound") || g.name.includes("Subang (SZB)"),
   );
-  const decisions = [
-    ...new Set(
-      trip.transport.flatMap((r) => (r.decisionId ? [r.decisionId] : [])),
-    ),
-  ];
   const known =
     (trip.fareGroups ?? [])
       .filter(
@@ -122,72 +117,6 @@ export function FlightPlanning() {
           </div>
         </Panel>
       ))}
-      {decisions.map((id) => {
-        const options = trip.transport.filter((r) => r.decisionId === id),
-          locked = options.some(hasHistory);
-        return (
-          <Panel
-            key={id}
-            title="Singapore → Mumbai return alternatives"
-            sub="3 February 2027 · only the selected option contributes to the forecast"
-          >
-            <div className="transit-body">
-              {options.map((r) => (
-                <div key={r.id} className="transport-card">
-                  <div>
-                    <h3>
-                      {r.number} ·{" "}
-                      {r.selectedAlternative
-                        ? "Selected return option"
-                        : "Alternative — excluded from forecast"}
-                    </h3>
-                    <p>
-                      {r.departureTime} SGT → {r.arrivalTime} IST ·{" "}
-                      {money(transportTotal(r))}
-                    </p>
-                    <p>
-                      {r.aircraft || "Aircraft unverified"} · Departure
-                      terminal: {r.departureTerminal || "Unverified"} · Arrival
-                      terminal: {r.arrivalTerminal || "Unverified"}
-                    </p>
-                    <p>
-                      Cabin baggage:{" "}
-                      {r.cabinBaggageKg == null
-                        ? "Unverified"
-                        : `${r.cabinBaggageKg} kg`}{" "}
-                      · Checked baggage:{" "}
-                      {r.checkedBaggageKg == null
-                        ? "Unverified"
-                        : `${r.checkedBaggageKg} kg`}
-                    </p>
-                    <details>
-                      <summary>Quote conditions & retained notes</summary>
-                      <p>{r.notes}</p>
-                    </details>
-                    <button
-                      className="button secondary"
-                      disabled={locked || r.selectedAlternative}
-                      onClick={() =>
-                        updateTrip((t) => selectFlightAlternative(t, r.id))
-                      }
-                    >
-                      {r.selectedAlternative
-                        ? `${r.number} selected`
-                        : `Select ${r.number}`}
-                    </button>
-                  </div>
-                </div>
-              ))}
-              {locked && (
-                <p>
-                  Booking/payment history prevents changing this decision until
-                  it is reconciled.
-                </p>
-              )}
-            </div>
-          </Panel>
-        );
-      })}
       {editing && (
         <Editor
           kind="fareGroups"
@@ -217,5 +146,77 @@ export function FlightPlanning() {
         />
       )}
     </>
+  );
+}
+
+// Keep the decision beside its dated journey leg rather than duplicating flight cards.
+export function ReturnFlightChoice({ decisionId }: { decisionId: string }) {
+  const { trip, updateTrip, money, editActions } = usePlanner();
+  const options = trip.transport.filter((r) => r.decisionId === decisionId);
+  const locked = options.some(hasHistory);
+  return (
+    <div className="return-flight-choice">
+      <label>
+        Return flight option
+        <select
+          aria-label="Return flight option"
+          value={options.find((r) => r.selectedAlternative)?.id ?? ""}
+          disabled={locked}
+          onChange={(event) => {
+            const id = event.target.value;
+            updateTrip((t) => selectFlightAlternative(t, id));
+          }}
+        >
+          {options.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.number} · {r.departureTime}–{r.arrivalTime} ·{" "}
+              {money(transportTotal(r))}
+            </option>
+          ))}
+        </select>
+      </label>
+      <details>
+        <summary>Compare return options</summary>
+        <p>
+          Only the selected option contributes to the forecast. Times are local.
+        </p>
+        {options.map((r) => (
+          <div key={r.id}>
+            <strong>
+              {r.number}
+              {r.selectedAlternative
+                ? " · Selected"
+                : " · Excluded from forecast"}
+            </strong>
+            <p>
+              {r.departureTime} SGT → {r.arrivalTime} IST ·{" "}
+              {money(transportTotal(r))}
+            </p>
+            <p>
+              Aircraft: {r.aircraft || "Unverified"} · Terminals:{" "}
+              {r.departureTerminal || "Unverified"} →{" "}
+              {r.arrivalTerminal || "Unverified"}
+            </p>
+            <p>
+              Cabin baggage:{" "}
+              {r.cabinBaggageKg == null
+                ? "Unverified"
+                : r.cabinBaggageKg + " kg"}{" "}
+              · Checked baggage:{" "}
+              {r.checkedBaggageKg == null
+                ? "Unverified"
+                : r.checkedBaggageKg + " kg"}
+            </p>
+            {editActions("transport", r)}
+          </div>
+        ))}
+      </details>
+      {locked && (
+        <p>
+          Booking/payment history prevents changing this decision until it is
+          reconciled.
+        </p>
+      )}
+    </div>
   );
 }
