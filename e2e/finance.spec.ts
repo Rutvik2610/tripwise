@@ -65,7 +65,7 @@ test("RM30 defaults to Spent, stores INR570, and snapshots survive global rate e
   });
   await nav(page, "Overview");
   await expect(page.getByTestId("total-paid")).toHaveText("₹570");
-  await expect(page.getByTestId("total-trip-cost")).toHaveText("₹1,75,052");
+  await expect(page.getByTestId("total-trip-cost")).toHaveText("₹1,66,352");
 });
 
 test("explicit allowance spending consumes the target and reconciliation explains other costs", async ({
@@ -89,9 +89,9 @@ test("explicit allowance spending consumes the target and reconciliation explain
     }),
   ).toContainText("Remaining allowance ₹13,500");
   await nav(page, "Overview");
-  await expect(page.getByTestId("total-trip-cost")).toHaveText("₹1,74,482");
+  await expect(page.getByTestId("total-trip-cost")).toHaveText("₹1,65,782");
   await expect(page.getByTestId("total-paid")).toHaveText("₹1,000");
-  await expect(page.getByTestId("remaining-forecast")).toHaveText("₹1,73,482");
+  await expect(page.getByTestId("remaining-forecast")).toHaveText("₹1,64,782");
   const panel = page.locator(".panel").filter({
     has: page.getByRole("heading", {
       name: "Budget reconciliation",
@@ -136,7 +136,7 @@ test("paying an existing estimate keeps the forecast constant; categories preser
     .getByRole("button", { name: "Save changes" })
     .click();
   await nav(page, "Overview");
-  await expect(page.getByTestId("total-trip-cost")).toHaveText("₹1,75,482");
+  await expect(page.getByTestId("total-trip-cost")).toHaveText("₹1,66,782");
   await expect(page.getByTestId("total-paid")).toHaveText("₹1,000");
   const flight = await addExpense(page, "Flight workflow check");
   await flight
@@ -172,7 +172,7 @@ test("activity payment is linked once and hotel defaults match the revised stays
     .getByRole("button", { name: "Save changes" })
     .click();
   await nav(page, "Overview");
-  await expect(page.getByTestId("total-trip-cost")).toHaveText("₹1,74,482");
+  await expect(page.getByTestId("total-trip-cost")).toHaveText("₹1,65,782");
   await expect(page.getByTestId("total-paid")).toHaveText("₹1,800");
   await page.reload();
   await expect(page.getByTestId("total-paid")).toHaveText("₹1,800");

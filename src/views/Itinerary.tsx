@@ -122,8 +122,8 @@ export default function Itinerary() {
         <GripVertical size={17} />
         <span>
           Drag activities to reorder or move between populated days. Use the
-          arrow buttons to reorder without dragging. Optional activities count
-          in estimates until cancelled or removed.
+          arrow buttons to reorder without dragging. Activities marked optional
+          / excluded do not contribute to estimates.
         </span>
       </div>
       <div className="day-tabs">

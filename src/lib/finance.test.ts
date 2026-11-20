@@ -59,7 +59,9 @@ describe("financial accounting and source defaults", () => {
       });
       expect(t.transport).toEqual(before.transport);
       expect(t.fareGroups).toEqual(before.fareGroups);
-      expect(totals(t).estimated).toBe(totals(before).estimated);
+      expect(totals({ ...t, activities: before.activities }).estimated).toBe(
+        totals(before).estimated,
+      );
     });
     expect(validate(JSON.parse(JSON.stringify(current)))).toEqual(current);
   });
@@ -190,7 +192,7 @@ describe("financial accounting and source defaults", () => {
         .reduce((s, r) => s + rowForecast(r), 0),
     ).toBe(1200);
   });
-  it("reconciles every category/source and identifies the actual 74,700 origin", () => {
+  it("reconciles every category/source and reconciles the revised sightseeing forecast", () => {
     const t = seed().trips[0],
       r = reconciliation(t);
     expect(r.expensesContribution).toBe(33200);
@@ -198,9 +200,9 @@ describe("financial accounting and source defaults", () => {
       ledger(t)
         .filter((r) => r.source === "Activities")
         .reduce((s, r) => s + rowForecast(r), 0),
-    ).toBe(41500);
-    expect(costOverview(t).other).toBe(74700);
-    expect(r.summary.estimated).toBe(174482);
+    ).toBe(32800);
+    expect(costOverview(t).other).toBe(66000);
+    expect(r.summary.estimated).toBe(165782);
     for (const rows of [r.categories, r.sources]) {
       expect(rows.reduce((s, g) => s + g.forecast, 0)).toBe(
         r.summary.estimated,
