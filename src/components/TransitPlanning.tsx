@@ -217,7 +217,7 @@ export function TransitPlanning({
               }
               sub={
                 l.connectionOnly
-                  ? "24 January 2027 · user flight-search details"
+                  ? `${shortDate(l.date)} · connection details`
                   : "Old schedule is not verified for the new travel window"
               }
               action={
@@ -232,7 +232,7 @@ export function TransitPlanning({
               <div className="transit-body">
                 <p>
                   {l.connectionOnly
-                    ? `Arrival ${l.arrivalTime} · Connecting departure ${l.departureTime} · 4h 30m · UTC+8`
+                    ? `Arrival ${l.arrivalTime} · Connecting departure ${l.departureTime} · ${duration === null ? "Duration unverified" : `${Math.floor(duration / 60)}h ${duration % 60}m`} · UTC+8`
                     : "Exact date, flight schedule, connection time and terminal details need reconfirmation. The old 08:15–18:50 connection is not a verified new-date schedule."}
                 </p>
                 {l.connectionOnly && (

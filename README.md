@@ -1,6 +1,6 @@
 # TripWise
 
-A private, local-first travel planner for the journey from Mumbai to Malaysia and Singapore in January 2027—and every adventure after it. React, TypeScript, Vite, Tailwind CSS, Recharts, and Lucide. No account, API key, subscription, or backend.
+A private, local-first travel planner for the journey from Mumbai to Malaysia and Singapore in January–February 2027 and every adventure after it. React, TypeScript, Vite, Tailwind CSS, Recharts, and Lucide. No account, API key, subscription, or backend.
 
 ## Run locally
 
@@ -46,13 +46,13 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE=/usr/bin/chromium npm run test:e2e
 
 All budgets, activity costs, and payment/refund amounts are stored in **INR**. Home currency changes display using your manual rates. Expenses, hotels, and transportation also retain original currency and an individual INR-per-unit exchange-rate snapshot.
 
-The projected cost is **active expense estimates + selected hotel totals + active transportation fares + active itinerary activity estimates + unrecovered payments on cancelled records or unselected hotel options**. Optional activity ideas are included until cancelled/removed. Do not add a second expense for an item already tracked in the hotel, transportation, or itinerary module. Hotel payment history remains counted when an option is deselected. A booked hotel must be cancelled or changed back to a planning status before selecting an alternative for the same stay. Deleting any paid record removes its financial history; export first.
+The projected cost is **active expense estimates + selected hotel totals + active transportation fares + active itinerary activity estimates + unrecovered payments on cancelled records or unselected hotel options**. Optional activities explicitly marked excluded do not enter the forecast. Do not add a second expense for an item already tracked in the hotel, transportation, or itinerary module. Hotel payment history remains counted when an option is deselected. A booked hotel must be cancelled or changed back to a planning status before selecting an alternative for the same stay. Deleting any paid record removes its financial history; export first.
 
 Confirmed costs are a subset of the forecast. Actual payments are not added again. Unpaid commitments are calculated per booked item, so a payment to one vendor cannot pay off another booking. Payment status is derived from paid and refunded INR amounts. Hotel general taxes are added only when marked Separate; tourism/heritage taxes are paid in person and default to **whole-stay amounts** for new hotel options; enter your combined charge for all nights once. A tax-basis selector optionally supports per-night quotes. Older saved options retain whole-stay semantics. Other property fees remain additional whole-stay amounts. The hotel editor previews each component and the amount payable at the property; this subtotal is already included in the final stay cost. Enter zero for fees already included in the nightly price. A selected hotel with a pending price generates a warning and is excluded from numeric totals until priced.
 
-Default rates (MYR 19, SGD 64, USD 85 INR/unit), all initial prices, and all activity costs are **illustrative, not live quotations**. Seeded hotel room types and booking conditions are unverified. No seeded item is booked or paid. Accommodation allowances are placeholders, not hotel recommendations. The Penang hotel exists only in the Malaysia-only scenario. The budget reserve is a distinct expense; avoid adding another reserve for the same purpose.
+Default rates (MYR 19, SGD 64, USD 85 INR/unit) and unpurchased activity/alternative estimates are illustrative, not live quotations. Seeded hotel room types and booking conditions are unverified. The Malaysia + Singapore source defaults now contain the reported confirmed, paid bookings; other illustrative estimates remain provisional. Accommodation allowances are placeholders, not hotel recommendations. The Penang hotel exists only in the Malaysia-only scenario. The budget reserve is a distinct expense; avoid adding another reserve for the same purpose.
 
-Changing global exchange rates never silently rewrites records. **Recalculate unpaid planning estimates** explicitly updates only unbooked records with no historical payment. Booked or previously paid records retain their original rate. Record actual INR payments as charged, including bank spreads/fees where appropriate.
+Changing global exchange rates never silently rewrites records. **Recalculate unpaid planning estimates** explicitly updates only unbooked records with no historical payment. Booked or previously paid records retain their original rate. Confirmed hotels may keep a fixed INR booking subtotal plus separately denominated property charges; recalculation updates only the property-charge rate, never the fixed booking payment. Record actual INR payments as charged, including bank spreads/fees where appropriate.
 
 ## Backup and restore
 
@@ -64,7 +64,7 @@ The production app registers a same-origin service worker. The shell, illustrati
 
 ## GitHub Pages deployment
 
-1. Push this project to `Rutvik2610/tripwise`, branch `main`.
+1. Push this project to `<owner>/tripwise`, branch `main`.
 2. In repository **Settings → Pages → Build and deployment**, choose **GitHub Actions**.
 3. The included workflow installs with `npm ci`, lints, runs unit and browser tests, builds, uploads `dist`, and deploys with official Pages actions. Pull requests run validation but do not deploy.
 4. Inspect the Actions deployment result for the actual published URL.
@@ -164,8 +164,17 @@ Flight details and their editor now store cabin piece count, cabin weight and ch
 
 ### January–February 2027 flight plan
 
-Both original scenarios now use 23 January–3 February. Current default hotel dates are now aligned with the revised destination stays; prices, selections and payment history are unchanged. Saved browser plans are not silently replaced. See [flight inventory, totals and migration details](docs/february-flight-plan.md). The outbound arrives at **SZB (Subang)**; the Langkawi flight still departs **KUL T2**. One connected outbound fare and one selected return alternative feed the shared ledger. Malaysia Only retains its stale return estimate without adding the overlapping outbound quote.
+The Malaysia-only scenario retains 23 January–3 February. The Malaysia + Singapore source plan now uses 27 January–7 February; see [confirmed bookings](docs/confirmed-bookings.md). The following quotation details describe the earlier historical plan. Current default hotel dates are now aligned with the revised destination stays; prices, selections and payment history are unchanged. Saved browser plans are not silently replaced. See [flight inventory, totals and migration details](docs/february-flight-plan.md). The historical outbound quote arrived at **SZB (Subang)**; the confirmed combined-trip outbound now arrives at **KUL T1**. One connected outbound fare and one selected return alternative feed the shared ledger. Malaysia Only retains its stale return estimate without adding the overlapping outbound quote.
 
 ### Financial clarity
 
 See [the accounting investigation and implementation report](docs/financial-clarity.md) for payment currency snapshots, category-specific spending labels, explicit allowance/activity links and the dashboard reconciliation. The combined scenario’s INR74,700 other projected costs reconcile to INR33,200 from Expenses plus INR41,500 from itinerary activities. Source hotel corrections require no new localStorage migration.
+
+
+### Repository privacy
+
+Only non-identifying travel details and amounts belong in source defaults. Never commit private confirmations, passenger identities, booking references, receipt references, credentials or local JSON exports. Browser-only data and private exports may contain information that must not be published.
+
+Run `npm run privacy:check` before publishing. CI runs the same guard. Enable the included local commit hook with `git config core.hooksPath .githooks`. Run `npm run privacy:history` for a redacted review of accessible history; it may flag clearly fictional historical test identifiers for manual review. The check prints paths and categories only and cannot prove absence of all PII. See [privacy audit](docs/privacy-audit.md) for scope and history limitations.
+
+Confirmed hotel payments use `bookingAmountINR`; extra property fees use `propertyCurrency` and `propertyRate`. The INR payment remains fixed. Change a property's remaining charge estimate only through the hotel editor or explicit Settings recalculation. Settling it increases `paid` on the same hotel, not a new Expense record. JSON version 1 remains compatible; older records keep the existing calculation rules.

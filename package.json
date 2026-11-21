@@ -10,7 +10,10 @@
     "test": "vitest run",
     "preview": "vite preview --host 0.0.0.0",
     "test:e2e": "playwright test",
-    "format": "prettier --write src public/sw.js *.ts *.js *.json .github/workflows/*.yml README.md"
+    "format": "prettier --write src public/sw.js *.ts *.js *.json .github/workflows/*.yml README.md",
+    "privacy:check": "python3 scripts/privacy_audit.py",
+    "privacy:history": "python3 scripts/privacy_audit.py --history",
+    "privacy:test": "python3 -m unittest discover -s scripts -p 'test_*.py'"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",

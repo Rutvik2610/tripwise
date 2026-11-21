@@ -1,3 +1,4 @@
+import { hotelBreakdown, ledger } from "../lib/calc";
 import { AccommodationDateWarning } from "./FlightPlanning";
 import { Plane, BedDouble, Wallet, ArrowUpRight } from "lucide-react";
 import { usePlanner } from "../lib/context";
@@ -7,6 +8,22 @@ import { Panel, Badge } from "./Shared";
 export function CostOverview() {
   const { trip, money, go, startEdit } = usePlanner();
   const s = costOverview(trip);
+  const rows = ledger(trip);
+  const flightsPaid = rows
+    .filter((r) => r.source === "Flights")
+    .reduce((sum, r) => sum + r.paid, 0);
+  const hotelsPaid = rows
+    .filter((r) => r.source === "Hotels")
+    .reduce((sum, r) => sum + r.paid, 0);
+  const myrHotels = trip.hotels.filter(
+    (h) =>
+      h.selected && h.status !== "Cancelled" && h.propertyCurrency === "MYR",
+  );
+  const myrOutstanding = myrHotels.reduce(
+    (sum, h) =>
+      sum + hotelBreakdown(h).propertyOutstanding / (h.propertyRate ?? h.rate),
+    0,
+  );
   return (
     <section className="cost-overview" aria-label="Trip cost summary">
       <AccommodationDateWarning />
@@ -66,6 +83,42 @@ export function CostOverview() {
           <small>A subset of remaining forecast spending</small>
         </div>
       </div>
+      {myrHotels.length > 0 && (
+        <div
+          className="notice"
+          role="status"
+          data-testid="booking-reconciliation"
+        >
+          <span>
+            Flights paid: {money(flightsPaid)} · Hotels paid:{" "}
+            {money(hotelsPaid)} · Combined paid:{" "}
+            {money(flightsPaid + hotelsPaid)}. Outstanding hotel charges:{" "}
+            {myrOutstanding.toLocaleString("en-IN", {
+              maximumFractionDigits: 2,
+            })}{" "}
+            MYR (≈{" "}
+            {money(
+              myrHotels.reduce(
+                (sum, h) => sum + hotelBreakdown(h).propertyOutstanding,
+                0,
+              ),
+            )}
+            ). Outstanding flight charges:{" "}
+            {money(
+              rows
+                .filter((r) => r.source === "Flights" && r.active)
+                .reduce((sum, r) => sum + Math.max(0, r.total - r.paid), 0),
+            )}
+            .{" "}
+            {
+              rows.filter((r) => r.source === "Flights" && r.booked && r.active)
+                .length
+            }{" "}
+            flight bookings · {s.flightCount} segments. These balances are
+            already included in the forecast.
+          </span>
+        </div>
+      )}
       <div className="cost-breakdown">
         <button onClick={() => go("Transportation")} className="cost-detail">
           <span>

@@ -1,5 +1,8 @@
+import previousPlan from "../../tests/fixtures/pre-confirmation-plan.json";
+import type { Store as PreviousStore } from "./model";
+const seed = () => structuredClone(previousPlan) as PreviousStore;
 import { describe, expect, it } from "vitest";
-import { publishedSnapshotSeed, seed } from "./seed";
+import { publishedSnapshotSeed } from "./seed";
 import {
   migrateStore,
   selectFlightAlternative,
@@ -213,12 +216,12 @@ describe("January–February 2027 flight plan", () => {
   it("preserves protected flight and ticket history byte-for-value and reports conflicts", () => {
     const s = publishedSnapshotSeed();
     s.trips[0].transport[0].paid = 1000;
-    s.trips[0].transport[0].reference = "USER-REF";
+    s.trips[0].transport[0].reference = "TEST-USER-REF";
     s.trips[0].transport[1].status = "Booked";
     s.trips[0].transport[3].refunded = 500;
     s.trips[0].transport[3].paid = 1000;
     s.trips[1].fareGroups![0].paid = 500;
-    s.trips[1].fareGroups![0].reference = "TICKET-REF";
+    s.trips[1].fareGroups![0].reference = "TEST-TICKET-REF";
     const before = structuredClone(s),
       next = migrateStore(s);
     [0, 1, 3].forEach((i) =>

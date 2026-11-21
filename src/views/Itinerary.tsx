@@ -201,8 +201,12 @@ export default function Itinerary() {
                       {r.departureTime
                         ? `Departure ${r.departureTime} local time`
                         : "Exact departure time unverified"}{" "}
-                      · {r.status}
-                      {r.fareGroupId ? " · Linked return ticket" : ""}
+                      ·{" "}
+                      {r.fareGroupId
+                        ? (trip.fareGroups?.find((g) => g.id === r.fareGroupId)
+                            ?.status ?? r.status)
+                        : r.status}
+                      {r.fareGroupId ? " · Shared connecting ticket" : ""}
                     </span>
                   </div>
                 ))}

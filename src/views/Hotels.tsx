@@ -97,9 +97,10 @@ export default function Hotels() {
       <div className="notice">
         <Info size={17} />
         <span>
-          All seeded prices are indicative, not live quotes. Room types,
-          amenities, taxes, and cancellation conditions are unverified. Blank
-          scores and prices mean unknown, never zero.
+          {trip.hotels.some((h) => h.bookingAmountINR !== undefined)
+            ? "Confirmed booking payments and extra property balances are shown separately. Unselected research prices and unverified amenities remain estimates; confirm cancellation deadlines with the property."
+            : "All seeded prices are indicative, not live quotes. Room types, amenities, taxes, and cancellation conditions are unverified."}{" "}
+          Blank scores and prices mean unknown, never zero.
         </span>
       </div>
       <div className="page-actions">
@@ -240,10 +241,11 @@ export default function Hotels() {
                     </div>
                     {h.nightly !== null && (
                       <p className="hotel-price-detail">
-                        {money(convert(h.nightly, h.rate))} displayed room /
-                        night + {money(breakdown.generalTax)} separate general
-                        tax per stay. Nightly headline spreads the full stay
-                        total over {breakdown.nights} nights.
+                        {h.bookingAmountINR !== undefined
+                          ? `Fixed booking amount ${money(h.bookingAmountINR)}; property charges are additional. `
+                          : `${money(convert(h.nightly, h.rate))} displayed room / night + ${money(breakdown.generalTax)} separate general tax per stay. `}
+                        Nightly headline spreads the full stay total over{" "}
+                        {breakdown.nights} nights.
                       </p>
                     )}
                     {difference !== null && !h.selected && (
@@ -263,9 +265,32 @@ export default function Hotels() {
                         </strong>
                       </div>
                       <div>
-                        <span>Payable in person at hotel</span>
-                        <strong>{money(breakdown.atProperty)}</strong>
+                        <span>
+                          {h.bookingAmountINR !== undefined
+                            ? "Property charges (whole stay)"
+                            : "Payable in person at hotel"}
+                        </span>
+                        <strong>
+                          {h.propertyCurrency
+                            ? `${h.propertyFees} ${h.propertyCurrency} ≈ ${money(breakdown.atProperty)}`
+                            : money(breakdown.atProperty)}
+                        </strong>
                       </div>
+                      {h.propertyCurrency && (
+                        <div>
+                          <span>Remaining at property</span>
+                          <strong>
+                            {(
+                              breakdown.propertyOutstanding /
+                              (h.propertyRate ?? h.rate)
+                            ).toLocaleString("en-IN", {
+                              maximumFractionDigits: 2,
+                            })}{" "}
+                            {h.propertyCurrency} ≈{" "}
+                            {money(breakdown.propertyOutstanding)}
+                          </strong>
+                        </div>
+                      )}
                       <div>
                         <span>Review / cleanliness</span>
                         <strong>
@@ -321,18 +346,21 @@ export default function Hotels() {
                     <details>
                       <summary>Tax breakdown & conditions</summary>
                       <p>
-                        Room: {h.nightly ?? "Pending"} {h.currency} ×{" "}
-                        {breakdown.nights} nights. General tax:{" "}
+                        {h.bookingAmountINR !== undefined
+                          ? `Fixed booking subtotal: ${money(h.bookingAmountINR)}.`
+                          : `Room: ${h.nightly ?? "Pending"} ${h.currency} × ${breakdown.nights} nights.`}{" "}
+                        General tax:{" "}
                         {h.taxMode === "Included"
                           ? "already included in nightly price (not added again)"
                           : `${h.taxes} ${h.currency} added once per stay`}
                         . Tourism: {h.tourismTax}; heritage: {h.heritageTax}{" "}
-                        {h.currency}{" "}
+                        {h.propertyCurrency ?? h.currency}{" "}
                         {h.propertyTaxBasis === "Per night"
                           ? `per night × ${breakdown.nights} nights`
                           : "for the whole stay (legacy basis retained)"}
                         . Both payable in person at the hotel. Other property
-                        fees: {h.propertyFees} {h.currency} per stay.
+                        fees: {h.propertyFees}{" "}
+                        {h.propertyCurrency ?? h.currency} per stay.
                       </p>
                       <p>{h.notes}</p>
                       {h.cancellationDeadline && (

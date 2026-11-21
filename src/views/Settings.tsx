@@ -10,6 +10,7 @@ import { useState } from "react";
 import { Panel, RateInputs } from "../components/Shared";
 import { usePlanner } from "../lib/context";
 import type { Currency } from "../lib/model";
+import { hotelBreakdown } from "../lib/calc";
 import { seed } from "../lib/seed";
 import { storageKey } from "../lib/storage";
 
@@ -34,7 +35,7 @@ export default function Settings() {
   const recalculate = () => {
     if (
       !confirm(
-        "Update exchange rates on unbooked, unpaid planning records in this trip? Booked records and historical payments stay unchanged.",
+        "Update exchange estimates for unpaid planning items and foreign property balances in this trip? Fixed INR booking totals and historical payments stay unchanged.",
       )
     )
       return;
@@ -54,18 +55,22 @@ export default function Settings() {
           ? { ...e, rate: store.rates[e.currency] }
           : e,
       ),
-      hotels: t.hotels.map((h) =>
-        h.status !== "Booked" && h.paid === 0
-          ? { ...h, rate: store.rates[h.currency] }
-          : h,
-      ),
+      hotels: t.hotels.map((h) => ({
+        ...h,
+        ...(h.status !== "Booked" && h.paid === 0
+          ? { rate: store.rates[h.currency] }
+          : {}),
+        ...(h.propertyCurrency && hotelBreakdown(h).propertyOutstanding > 0
+          ? { propertyRate: store.rates[h.propertyCurrency] }
+          : {}),
+      })),
       transport: t.transport.map((x) =>
         x.status !== "Booked" && x.paid === 0
           ? { ...x, rate: store.rates[x.currency] }
           : x,
       ),
     }));
-    setToast("Unbooked, unpaid estimates recalculated");
+    setToast("Unpaid estimates and foreign property balances recalculated");
   };
   return (
     <>
@@ -86,7 +91,9 @@ export default function Settings() {
           <p className="settings-note">
             These defaults are illustrations, not live rates. Each record keeps
             its own exchange rate. Updating these rates does not silently
-            rewrite your bookings or payments.
+            rewrite your bookings or payments. Recalculating updates foreign
+            property balance estimates while keeping fixed INR booking totals
+            and payments unchanged.
           </p>
           <button className="button secondary" onClick={recalculate}>
             <RotateCcw size={15} />

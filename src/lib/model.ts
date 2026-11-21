@@ -59,6 +59,10 @@ export interface Expense {
   receipt: string;
 }
 export interface Hotel {
+  // The reported booking payment stays in INR; foreign property charges are separate.
+  bookingAmountINR?: number;
+  propertyCurrency?: Currency;
+  propertyRate?: number;
   id: string;
   name: string;
   destination: string;
@@ -174,6 +178,7 @@ export interface Simulation {
   contingency: number;
 }
 export interface FareGroup {
+  ticketIssuance?: "Awaiting ticketing" | "Issued" | "Unverified";
   includeInBudget?: boolean;
   quoteStatus?: "User search quote" | "Older estimate — requote needed";
   id: string;

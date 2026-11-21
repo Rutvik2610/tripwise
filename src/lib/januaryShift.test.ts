@@ -41,7 +41,7 @@ describe("January 2027 one-day shift", () => {
       t.transport[0].arrivalTime = "06:10";
       t.transport[0].provider = "User airline";
       t.transport[0].number = "123";
-      t.transport[0].reference = "ABC2027";
+      t.transport[0].reference = "TEST-TEST-ABC2027";
       t.hotels[0].status = "Booked";
       t.hotels[0].paid = 5000;
       t.hotels[0].refunded = 100;
@@ -62,7 +62,7 @@ describe("January 2027 one-day shift", () => {
         arrivalDate: "2027-01-17",
         departureTime: "23:40",
         arrivalTime: "06:10",
-        reference: "ABC2027",
+        reference: "TEST-TEST-ABC2027",
       });
       expect(
         next.hotels.map((h) => daysBetween(h.checkIn, h.checkOut)),

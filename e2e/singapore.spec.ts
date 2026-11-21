@@ -1,3 +1,10 @@
+import { readFileSync as readPreviousPlan } from "node:fs";
+const previousPlan = JSON.parse(
+  readPreviousPlan(
+    new URL("../tests/fixtures/pre-confirmation-plan.json", import.meta.url),
+    "utf8",
+  ),
+);
 import { test, expect } from "@playwright/test";
 test("revised Singapore days render once in timeline and calendar without changing transport totals", async ({
   page,
@@ -50,4 +57,12 @@ test("revised Singapore days render once in timeline and calendar without changi
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true);
+});
+
+// Retain regression coverage for the pre-confirmation estimates and alternative selector.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript((data) => {
+    if (!localStorage.getItem("tripwise.v1"))
+      localStorage.setItem("tripwise.v1", JSON.stringify(data));
+  }, previousPlan);
 });

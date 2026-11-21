@@ -48,6 +48,9 @@ const expense = z.object({
   receipt: str,
 });
 const hotel = z.object({
+  bookingAmountINR: num.optional(),
+  propertyCurrency: currency.optional(),
+  propertyRate: num.positive().optional(),
   id,
   name: str.min(1),
   destination: str,
@@ -178,6 +181,9 @@ const stop = z.object({
   end: date,
 });
 const fareGroup = z.object({
+  ticketIssuance: z
+    .enum(["Awaiting ticketing", "Issued", "Unverified"])
+    .optional(),
   includeInBudget: z.boolean().optional(),
   quoteStatus: z
     .enum(["User search quote", "Older estimate — requote needed"])

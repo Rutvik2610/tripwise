@@ -52,21 +52,22 @@ export function FlightPlanning() {
       .reduce((s, r) => s + transportTotal(r), 0);
   return (
     <>
-      {trip.february2027Revision === 1 && (
-        <div className="notice" role="status">
-          <span>
-            <strong data-testid="known-airfare-subtotal">
-              Budgeted current search-quote subtotal: {money(known)}.
-            </strong>{" "}
-            This is not the full airfare forecast: older active estimates may
-            still be included below. Search details are user-supplied,
-            unpurchased quotes. Arrival is at{" "}
-            <strong>SZB — Kuala Lumpur Subang</strong>; the Langkawi departure
-            remains <strong>KUL T2</strong>. Plan the appropriate airport
-            transfers separately.
-          </span>
-        </div>
-      )}
+      {trip.february2027Revision === 1 &&
+        !tickets.some((t) => t.ticketIssuance) && (
+          <div className="notice" role="status">
+            <span>
+              <strong data-testid="known-airfare-subtotal">
+                Budgeted current search-quote subtotal: {money(known)}.
+              </strong>{" "}
+              This is not the full airfare forecast: older active estimates may
+              still be included below. Search details are user-supplied,
+              unpurchased quotes. Arrival is at{" "}
+              <strong>SZB — Kuala Lumpur Subang</strong>; the Langkawi departure
+              remains <strong>KUL T2</strong>. Plan the appropriate airport
+              transfers separately.
+            </span>
+          </div>
+        )}
       {(trip.flightUpdateConflicts ?? []).map((message, i) => (
         <div className="notice warning" role="status" key={i}>
           {message}
@@ -76,7 +77,11 @@ export function FlightPlanning() {
         <Panel
           key={ticket.id}
           title="Connecting outbound ticket"
-          sub="MakeMyTrip · Singapore Airlines · Economy Value"
+          sub={
+            ticket.ticketIssuance
+              ? "Singapore Airlines · single connecting itinerary"
+              : "MakeMyTrip · Singapore Airlines · Economy Value"
+          }
           action={
             <button className="text-button" onClick={() => setEditing(ticket)}>
               Edit outbound ticket & payments
@@ -91,13 +96,24 @@ export function FlightPlanning() {
             <p>
               {ticket.status} · {ticket.quoteStatus} ·{" "}
               {ticket.paid > 0 ? `${money(ticket.paid)} paid` : "Unpaid"}. One
-              combined fare for SQ 423 and SQ 8584.
+              combined fare for{" "}
+              {trip.transport
+                .filter((r) => r.fareGroupId === ticket.id)
+                .map((r) => r.number)
+                .join(" + ")}
+              .
             </p>
             <p>
               {ticket.includeInBudget === false
                 ? "Comparison only — excluded from forecast to avoid overlapping the retained older Malaysia round-trip estimate. The ₹35,550 older fare requires an updated quotation."
                 : "Included once in the airfare forecast; individual segment allocation is unknown."}
             </p>
+            {ticket.ticketIssuance && (
+              <p>
+                <strong>Ticket issuance: {ticket.ticketIssuance}</strong> ·
+                Payment and e-ticket issuance are separate.
+              </p>
+            )}
             <p>{ticket.notes}</p>
             <div className="ticket-legs">
               {trip.transport

@@ -497,7 +497,7 @@ test("legacy data research review preserves paid and manually edited records", a
     first.fare = 20000;
     first.paid = 1000;
     first.status = "Booked";
-    first.reference = "My booking";
+    first.reference = "TEST-My booking";
     t.transport[1].fare = 3500;
     t.transport[2].fare = 5500;
     t.transport[2].mode = "Regional flight";
@@ -898,7 +898,7 @@ test("legacy Malaysia flight update preserves a confirmed paid booking and offer
     out.fare = 12500;
     out.paid = 500;
     out.status = "Booked";
-    out.reference = "Personal confirmed booking";
+    out.reference = "TEST-Personal confirmed booking";
     t.transport[t.transport.length - 1].status = "Researching";
     s.activeId = t.id;
     localStorage.setItem("tripwise.v1", JSON.stringify(s));

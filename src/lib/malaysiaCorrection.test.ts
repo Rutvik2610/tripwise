@@ -184,14 +184,14 @@ describe("Malaysia-only correction revision 2", () => {
       fare: 4100,
       paid: 2000,
       refunded: 300,
-      reference: "Actual reservation",
+      reference: "TEST-Actual reservation",
       departureDate: "2027-01-20",
     });
     const old = t.transport.find((r) => r.id === "previous-pen-bom")!;
     Object.assign(old, {
       status: "Booked",
       paid: 1200,
-      reference: "Confirmed Penang return",
+      reference: "TEST-Confirmed Penang return",
     });
     const h = t.hotels.find((h) => h.destination === "Penang")!;
     h.status = "Booked";

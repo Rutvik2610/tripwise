@@ -17,11 +17,17 @@ export const netPaid = (paid: number, refunded: number) =>
 export function hotelBreakdown(h: Hotel) {
   const nights = daysBetween(h.checkIn, h.checkOut);
   const multiplier = h.propertyTaxBasis === "Per night" ? nights : 1;
-  const room = h.nightly === null ? null : convert(h.nightly * nights, h.rate);
-  const generalTax = convert(h.taxMode === "Separate" ? h.taxes : 0, h.rate);
-  const tourismTax = convert(h.tourismTax * multiplier, h.rate);
-  const heritageTax = convert(h.heritageTax * multiplier, h.rate);
-  const propertyFees = convert(h.propertyFees, h.rate);
+  const room =
+    h.bookingAmountINR ??
+    (h.nightly === null ? null : convert(h.nightly * nights, h.rate));
+  const propertyRate = h.propertyRate ?? h.rate;
+  const generalTax = convert(
+    h.bookingAmountINR === undefined && h.taxMode === "Separate" ? h.taxes : 0,
+    h.rate,
+  );
+  const tourismTax = convert(h.tourismTax * multiplier, propertyRate);
+  const heritageTax = convert(h.heritageTax * multiplier, propertyRate);
+  const propertyFees = convert(h.propertyFees, propertyRate);
   const atProperty = convert(tourismTax + heritageTax + propertyFees, 1);
   const bookingSubtotal = room === null ? null : convert(room + generalTax, 1);
   return {
@@ -33,6 +39,11 @@ export function hotelBreakdown(h: Hotel) {
     propertyFees,
     atProperty,
     bookingSubtotal,
+    propertyOutstanding: Math.max(
+      0,
+      atProperty -
+        Math.max(0, netPaid(h.paid, h.refunded) - (bookingSubtotal ?? 0)),
+    ),
     total:
       bookingSubtotal === null
         ? null

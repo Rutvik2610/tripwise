@@ -52,6 +52,11 @@ const booking = [
 ];
 export const fields: Record<string, Field[]> = {
   fareGroups: [
+    select("ticketIssuance", "Ticket issuance", [
+      "Awaiting ticketing",
+      "Issued",
+      "Unverified",
+    ]),
     f("name", "Ticket name", "text", { required: true }),
     select("quoteStatus", "Quotation status", [
       "User search quote",
@@ -153,6 +158,11 @@ export const fields: Record<string, Field[]> = {
     f("checkOut", "Check-out", "date", { required: true }),
     f("room", "Room type / verification"),
     ...money,
+    f("bookingAmountINR", "Fixed booking total paid/quoted (INR)", "number", {
+      hint: "Optional fixed INR booking subtotal; overrides nightly multiplication. Excludes property charges.",
+    }),
+    select("propertyCurrency", "Property charges currency", currencies),
+    f("propertyRate", "Property charges rate (INR per unit)", "number"),
     f("nightly", "Price per night", "number", {
       nullable: true,
       hint: "Leave empty if price is pending.",
@@ -382,9 +392,9 @@ export function Editor({
         >
           {kind === "transport" && !!value.fareGroupId && (
             <p className="notice">
-              This leg belongs to a round-trip ticket. Edit fare, booking
-              status, reference and payments on the ticket card. Individual-leg
-              pricing is unknown.
+              This leg belongs to a shared ticket. Edit fare, booking status,
+              reference and payments on the ticket card. Individual-leg pricing
+              is unknown.
             </p>
           )}
           <div className="form-grid">
@@ -401,7 +411,18 @@ export function Editor({
               />
             ) : (
               fields[kind]
-                .filter((field) => !field.layoverOnly || value.layoverId)
+                .filter(
+                  (field) =>
+                    (!field.layoverOnly || value.layoverId) &&
+                    (![
+                      "bookingAmountINR",
+                      "propertyCurrency",
+                      "propertyRate",
+                    ].includes(field.key) ||
+                      value.bookingAmountINR !== undefined) &&
+                    (field.key !== "ticketIssuance" ||
+                      value.ticketIssuance !== undefined),
+                )
                 .map((field) => (
                   <label
                     className={field.type === "textarea" ? "span-2" : ""}
@@ -439,7 +460,12 @@ export function Editor({
                                 [field.key]: e.target.value,
                                 ...(field.key === "currency"
                                   ? { rate: rates[e.target.value as Currency] }
-                                  : {}),
+                                  : field.key === "propertyCurrency"
+                                    ? {
+                                        propertyRate:
+                                          rates[e.target.value as Currency],
+                                      }
+                                    : {}),
                               })
                             }
                           >
@@ -565,7 +591,11 @@ function HotelTaxPreview({ hotel }: { hotel: Hotel }) {
       <h3>{b.nights} nights · Cost breakdown (INR)</h3>
       <dl>
         <div>
-          <dt>Room × {b.nights} nights</dt>
+          <dt>
+            {hotel.bookingAmountINR !== undefined
+              ? "Fixed INR booking subtotal"
+              : `Room × ${b.nights} nights`}
+          </dt>
           <dd>{format(b.room)}</dd>
         </div>
         <div>

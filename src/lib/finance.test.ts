@@ -1,5 +1,8 @@
+import previousPlan from "../../tests/fixtures/pre-confirmation-plan.json";
+import type { Store as PreviousStore } from "./model";
+const seed = () => structuredClone(previousPlan) as PreviousStore;
 import { describe, it, expect } from "vitest";
-import { seed, publishedSnapshotSeed, blankExpense } from "./seed";
+import { publishedSnapshotSeed, blankExpense } from "./seed";
 import { migrateStore } from "./februaryFlights";
 import { correctDefaultHotelDates } from "./defaultData";
 import {

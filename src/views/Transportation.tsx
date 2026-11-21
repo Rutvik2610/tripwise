@@ -81,11 +81,13 @@ export default function Transportation() {
         <Info size={17} />
         <span>
           {trip.january2027Shift === 1 &&
+            !trip.fareGroups?.some((g) => g.ticketIssuance) &&
             "Shifted travel dates are provisional and have not been independently reverified. "}
-          Fares are illustrative. No flight schedules or protected connections
-          are assumed. Enter local times; duration calculations use India
-          UTC+5:30 and Malaysia / Singapore UTC+8. Other routes need manual
-          verification.
+          {trip.fareGroups?.some((g) => g.ticketIssuance)
+            ? "Purchased flight amounts include platform charges. Confirm ticket issuance, gates and check-in arrangements before travel. "
+            : "Fares are illustrative. No flight schedules or protected connections are assumed. "}{" "}
+          Enter local times; duration calculations use India UTC+5:30 and
+          Malaysia / Singapore UTC+8. Other routes need manual verification.
         </span>
       </div>
       {connectionWarnings(activeTransport).map((w) => (
@@ -182,7 +184,7 @@ export default function Transportation() {
                     <summary>Fare & booking details</summary>
                     <p>
                       {t.fareGroupId
-                        ? "Individual-leg allocation unknown. This flight is included in the shared round-trip fare; edit amounts on the ticket card."
+                        ? "Individual-leg allocation unknown. This flight is included in the shared ticket; edit amounts on the ticket card."
                         : `Base ${t.fare} + taxes ${t.taxes} + baggage ${t.baggage} + seats ${t.seat} ${t.currency}. Rate: ${t.rate} INR/${t.currency}.`}
                     </p>
                     <p>

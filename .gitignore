@@ -33,3 +33,19 @@ tripwise-backup-*.json
 .vscode/
 .idea/
 Thumbs.db
+
+# Confidential travel material must stay outside the repository
+private/
+private-documents/
+booking-documents/
+local-exports/
+*.pdf
+*.heic
+*.doc
+*.docx
+*boarding-pass*
+*passport-scan*
+tripwise-recovery*.json
+
+__pycache__/
+*.pyc

@@ -1,0 +1,3 @@
+#!/bin/sh
+# Never prints confidential matches.
+exec python3 scripts/privacy_audit.py --staged

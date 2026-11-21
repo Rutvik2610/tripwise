@@ -564,7 +564,9 @@ export default function App() {
               Settings & backups
             </button>
             <div className="profile">
-              <div className="avatar">R</div>
+              <div className="avatar">
+                <Compass size={18} aria-hidden="true" />
+              </div>
               <div>
                 <strong>Your travel space</strong>
                 <small>
@@ -625,7 +627,9 @@ export default function App() {
                 <Bell size={19} />
                 {trip.checklist.some((c) => c.status !== "Done") && <i />}
               </button>
-              <div className="top-avatar">R</div>
+              <div className="top-avatar">
+                <Compass size={16} aria-hidden="true" />
+              </div>
             </div>
           </header>
           <main>

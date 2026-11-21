@@ -155,7 +155,7 @@ describe("January research quotes", () => {
       status: "Booked",
       paid: 1000,
       refunded: 50,
-      reference: "real booking",
+      reference: "TEST-real booking",
     };
     t.transport[1].status = "Cancelled";
     const result = applyResearchUpdate(

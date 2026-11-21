@@ -138,7 +138,7 @@ describe("Malaysia-only round-trip ticket", () => {
     for (const patch of [
       { paid: 1000 },
       { refunded: 100, paid: 100 },
-      { reference: "Actual booking" },
+      { reference: "TEST-Actual booking" },
       { status: "Booked" },
       { status: "Cancelled" },
     ]) {

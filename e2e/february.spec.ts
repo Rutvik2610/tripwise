@@ -1,3 +1,10 @@
+import { readFileSync as readPreviousPlan } from "node:fs";
+const previousPlan = JSON.parse(
+  readPreviousPlan(
+    new URL("../tests/fixtures/pre-confirmation-plan.json", import.meta.url),
+    "utf8",
+  ),
+);
 import { test, expect } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import type { Store } from "../src/lib/model";
@@ -167,7 +174,7 @@ test("old localStorage updates once, preserves protected payments and hotel reco
   await page.goto("/");
   const original = structuredClone(oldSnapshot);
   original.trips[0].transport[3].paid = 500;
-  original.trips[0].transport[3].reference = "KEEP-BOOKING";
+  original.trips[0].transport[3].reference = "TEST-KEEP-BOOKING";
   await page.evaluate(
     (value) => localStorage.setItem("tripwise.v1", JSON.stringify(value)),
     original,
@@ -211,4 +218,12 @@ test("old localStorage updates once, preserves protected payments and hotel reco
       )
     ).trips[0].start,
   ).toBe("2027-01-23");
+});
+
+// Retain regression coverage for the pre-confirmation estimates and alternative selector.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript((data) => {
+    if (!localStorage.getItem("tripwise.v1"))
+      localStorage.setItem("tripwise.v1", JSON.stringify(data));
+  }, previousPlan);
 });
